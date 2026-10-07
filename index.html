@@ -1,0 +1,3642 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Smart Pelican Crossing & Simulasi Simpang Panorama - UPI Bandung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+<style>
+:root {
+    --bg: #0b0f19;
+    --card: #131b2e;
+    --card-hover: #18223a;
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-border-glow: rgba(59, 130, 246, 0.3);
+    --fg: #f1f5f9;
+    --fg-muted: #94a3b8;
+    --fg-subtle: #64748b;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.25);
+    --safe: #10b981;
+    --safe-glow: rgba(16, 185, 129, 0.25);
+    --warn: #f59e0b;
+    --warn-glow: rgba(245, 158, 11, 0.25);
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.25);
+    --canvas-bg: #f4f1e6;
+    --radius: 12px;
+    --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-theme="light"] {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --card-hover: #f1f5f9;
+    --card-border: #e2e8f0;
+    --card-border-glow: rgba(59, 130, 246, 0.2);
+    --fg: #0f172a;
+    --fg-muted: #475569;
+    --fg-subtle: #94a3b8;
+    --canvas-bg: #f4f1e6;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--font);
+    background-color: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    padding: 16px;
+    min-height: 100vh;
+}
+
+/* Header & Navigation */
+.app-header {
+    max-width: 1560px;
+    margin: 0 auto 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 15px rgba(37, 99, 235, 0.35);
+}
+
+.brand-text h1 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(to right, #60a5fa, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-text p {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.btn-header {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--fg);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.btn-header:hover {
+    background: var(--card-hover);
+    border-color: var(--accent);
+}
+
+/* Main Grid Layout: 2 Columns */
+.main-layout {
+    max-width: 1560px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 560px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 1280px) {
+    .main-layout {
+        grid-template-columns: 500px 1fr;
+    }
+}
+
+@media (max-width: 1040px) {
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Glass Cards */
+.panel {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.panel-title {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Left Column: Simulasi Panorama */
+.sim-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid var(--card-border);
+}
+
+.btn-group {
+    display: flex;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.btn-toggle {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-toggle.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-icon-toggle {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-icon-toggle.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--safe);
+    color: var(--safe);
+}
+
+/* Pedestrian Crossing Push Button */
+.cross-action-container {
+    margin-bottom: 12px;
+}
+
+.btn-cross-main {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    font-family: var(--font);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-cross-main:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+    filter: brightness(1.08);
+}
+
+.btn-cross-main:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-cross-main:disabled {
+    background: #334155;
+    color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Panorama Simulation Canvas */
+.canvas-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--canvas-bg);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--card-border);
+}
+
+#panorama-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 720 / 900;
+}
+
+/* Live Signal Phase HUD */
+.phase-status-card {
+    margin-top: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.phase-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #60a5fa;
+}
+
+.phase-time {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+.phase-bar-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.phase-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #10b981);
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.signals-mini-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.70rem;
+}
+
+.signal-chip {
+    flex: 1 1 calc(25% - 6px);
+    min-width: 82px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.signal-chip .sig-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.sig-dot.green { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.sig-dot.yellow { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.sig-dot.red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+
+/* Route engineering collapsible */
+.route-info-box {
+    margin-top: 12px;
+    font-size: 0.76rem;
+    color: var(--fg-muted);
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 3px solid var(--warn);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+}
+
+/* Right Column: Video Detection & AI Decision Center */
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* AI Gap Decision Hero Card */
+.ai-decision-card {
+    background: linear-gradient(145deg, #162036, #101726);
+    border: 1px solid var(--card-border-glow);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-decision-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b);
+}
+
+.ai-hero-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 16px;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .ai-hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.ai-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+}
+
+.status-safe {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid var(--safe);
+    color: #34d399;
+}
+
+.status-hold {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid var(--danger);
+    color: #f87171;
+}
+
+.status-idle {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid var(--accent);
+    color: #93c5fd;
+}
+
+.ai-metrics-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.metric-pill {
+    flex: 1 1 calc(33.333% - 8px);
+    min-width: 85px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.metric-pill .lbl {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.metric-pill .val {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-top: 2px;
+}
+
+.confidence-gauge-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+
+.confidence-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.confidence-bar-track {
+    width: 100%;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.confidence-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.ai-reasoning-log {
+    margin-top: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border-left: 3px solid var(--accent);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.78rem;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+}
+
+/* Camera Tabs */
+.camera-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.cam-tab {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--card-border);
+    color: var(--fg-muted);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cam-tab.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent);
+    color: #60a5fa;
+}
+
+.cam-tab .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #64748b;
+}
+
+.cam-tab.active .dot {
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+}
+
+/* Video Stage */
+.video-display-area {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--card-border);
+    aspect-ratio: 16 / 9;
+}
+
+.video-display-area video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.video-display-area canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+}
+
+/* Video Controls & Tools Bar */
+.video-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+}
+
+.tool-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--card-border);
+    color: var(--fg);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tool-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--fg-muted);
+}
+
+.tool-btn.active {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--warn);
+    color: #fbbf24;
+}
+
+.video-source-select {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--fg);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+
+/* Calibration Sliders Accordion */
+.calibration-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+    font-size: 0.76rem;
+}
+
+.slider-group label {
+    display: flex;
+    justify-content: space-between;
+    color: var(--fg-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.slider-group input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+}
+
+/* Telemetry Grid */
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.telemetry-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.telemetry-box .title {
+    font-size: 0.7rem;
+    color: var(--fg-subtle);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.telemetry-box .number {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-top: 4px;
+}
+
+/* Telemetry Section Headers & Multi-Class UI */
+.telemetry-section-title {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+    margin: 14px 0 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.telemetry-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--card-border);
+}
+.telemetry-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+}
+.telemetry-pill-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+.telemetry-pill-cyan { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+.telemetry-pill-orange { background: rgba(251, 146, 60, 0.15); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
+.telemetry-pill-purple { background: rgba(192, 132, 252, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); }
+.telemetry-pill-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.telemetry-pill-yellow { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+.telemetry-pill-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="brand">
+        <div class="brand-icon">🚦</div>
+        <div class="brand-text">
+            <h1>Smart Pelican Crossing & Simulasi Simpang Panorama</h1>
+            <p>Studi Kasus: Persimpangan UPI & Jl. Dr. Setiabudi Bandung &mdash; AI Gap-Acceptance</p>
+        </div>
+    </div>
+    <div class="header-actions">
+        <span class="badge-tag">Duplikat Terpadu</span>
+        <a href="ai-testbed.html" class="btn-header" target="_blank">🧪 AI Testbed (Validasi 100x)</a>
+        <button id="theme-toggle" class="btn-header">🌓 Tema</button>
+    </div>
+</header>
+
+<main class="main-layout">
+
+    <!-- KOLOM KIRI: SIMULASI GEOMETRIS SIMPANG PANORAMA -->
+    <section class="panel left-panel">
+        <div class="panel-header">
+            <h2 class="panel-title">🗺️ Simulasi Simpang Panorama (UPI)</h2>
+            <span class="badge-tag" style="background:rgba(16,185,129,0.15);color:#34d399;border-color:rgba(16,185,129,0.3)">Real-Time 2D</span>
+        </div>
+
+        <!-- Kontrol Kecepatan & Lingkungan -->
+        <div class="sim-controls-bar">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:0.75rem;color:var(--fg-muted);font-weight:600;">Kecepatan:</span>
+                <div class="btn-group">
+                    <button class="btn-toggle active" data-speed="1">1×</button>
+                    <button class="btn-toggle" data-speed="3">3×</button>
+                    <button class="btn-toggle" data-speed="6">6×</button>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <button id="btn-night" class="btn-icon-toggle">🌙 Malam</button>
+                <button id="btn-sound" class="btn-icon-toggle active">🔊 Suara: Nyala</button>
+                <button id="btn-reset-sim" class="btn-icon-toggle">🔄 Reset</button>
+            </div>
+        </div>
+
+        <!-- Uji Cepat State Machine AI & 3 Arah Panorama -->
+        <div class="sim-controls-bar" style="margin-top:-6px;background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.25);">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;justify-content:space-between;">
+                <span style="font-size:0.75rem;color:#60a5fa;font-weight:700;">🧪 Uji AI State:</span>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                    <button class="tool-btn" onclick="testSpawnTurn()" style="padding:4px 7px;font-size:0.70rem;" title="Simulasikan kendaraan antre di lajur U-Turn Bawah">➕ U-Turn (Fase 1)</button>
+                    <button class="tool-btn" onclick="testSpawnVitasari()" style="padding:4px 7px;font-size:0.70rem;background:rgba(52,211,153,0.15);border-color:#34d399;color:#a7f3d0;" title="Simulasikan kendaraan dari Vitasari ke arah Gerlong / Setiabudi Atas">➕ Vitasari → Gerlong ↑</button>
+                    <button class="tool-btn" onclick="testSpawnPanoramaDest('Pin')" style="padding:4px 7px;font-size:0.70rem;background:rgba(168,85,247,0.15);border-color:#a855f7;color:#d8b4fe;" title="Kendaraan Jl. Panorama ke arah Jalan B (Bandung)">➕ Panor → Bandung ↓</button>
+                    <button class="tool-btn" onclick="testSpawnPanoramaDest('Pvit')" style="padding:4px 7px;font-size:0.70rem;background:rgba(192,132,252,0.15);border-color:#c084fc;color:#e9d5ff;" title="Kendaraan Jl. Panorama menyeberang ke arah Vitasari">➕ Panor → Vitasari ←</button>
+                    <button class="tool-btn" onclick="testSpawnPanoramaDest('Pupi')" style="padding:4px 7px;font-size:0.70rem;background:rgba(232,121,249,0.15);border-color:#e879f9;color:#f5d0fe;" title="Kendaraan Jl. Panorama belok kanan ke Gerlong / UPI / Lembang (ke atas)">➕ Panor → Gerlong/UPI ↑</button>
+                    <button class="tool-btn" onclick="testTriggerPedestrianPhase()" style="padding:4px 7px;font-size:0.70rem;background:rgba(16,185,129,0.15);border-color:#10b981;color:#a7f3d0;" title="Uji Fase 1: Penyeberang Jalan & U-Turn Hijau">🚶 Uji Zebra Cross (Fase 1)</button>
+                    <button class="tool-btn" onclick="testClearPanorama()" style="padding:4px 7px;font-size:0.70rem;" title="Kosongkan antrean Panorama untuk melihat State 3 di-skip secara otomatis">🧹 Kosongkan (Uji Skip)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Permintaan Pejalan Kaki (Push Button) -->
+        <div class="cross-action-container">
+            <button id="btn-pedestrian-call" class="btn-cross-main" onclick="triggerPedestrianCross()">
+                <span>🚶‍♂️</span>
+                <span id="btn-ped-text">Minta Menyeberang (Push Button)</span>
+            </button>
+        </div>
+
+        <!-- Canvas Visual Simpang Panorama -->
+        <div class="canvas-wrapper">
+            <canvas id="panorama-canvas" width="720" height="900" aria-label="Simulasi arus geometris simpang Panorama UPI Bandung"></canvas>
+        </div>
+
+        <!-- Live Signal Phase HUD -->
+        <div class="phase-status-card">
+            <div class="phase-header">
+                <span class="phase-name" id="hud-phase-name">STATE 1 – Fase U-Turn &amp; Penyeberang Jalan</span>
+                <span class="phase-time" id="hud-phase-timer">15 s</span>
+            </div>
+            <div class="phase-bar-track">
+                <div class="phase-bar-fill" id="hud-phase-bar"></div>
+            </div>
+            <div class="signals-mini-row">
+                <div class="signal-chip">
+                    <span class="sig-dot green" id="sig-dot-turn"></span>
+                    <span>↩ U-Turn Jalan B</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot green" id="sig-dot-aturn"></span>
+                    <span>↱ Belok Kanan A (Panorama)</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot red" id="sig-dot-a"></span>
+                    <span>↑ Lurus A (Lembang)</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot red" id="sig-dot-b"></span>
+                    <span>↓ Lurus B (Bandung)</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot green" id="sig-dot-pleft"></span>
+                    <span>↰ Belok Kiri Panorama</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot red" id="sig-dot-pmain"></span>
+                    <span>⇆ Panorama Utama</span>
+                </div>
+                <div class="signal-chip">
+                    <span class="sig-dot red" id="sig-dot-ped"></span>
+                    <span>🚶 Pelican Cross</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panduan & Evaluasi Komprehensif: Rincian Fase Hasil Diskusi & Adaptive Real-Time AI -->
+        <div class="route-info-box" style="border-left-color: #3b82f6; background: rgba(15,23,42,0.85); padding: 16px; margin-top: 14px; border-radius: 8px;">
+            <div style="font-weight: 800; font-size: 0.90rem; color: #60a5fa; margin-bottom: 8px; display:flex; align-items:center; gap:6px;">
+                <span>🚦</span> RINCIAN FASE LALU LINTAS SESUAI HASIL DISKUSI (ADAPTIVE AI)
+            </div>
+            <p style="font-size:0.73rem; color:var(--fg-muted); margin-bottom:12px;">
+                Implementasi kendali cerdas simpang Panorama UPI: Mengakomodasi jalan 2 lajur yang dipakai 3 lajur informal, memisahkan fase gerakan memotong vs lurus, dan menjamin all-red aman pada fase interupsi.
+            </p>
+
+            <!-- 3 Fase Utama Sesuai Arahan Diskusi -->
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.75rem; line-height: 1.45;">
+                <div style="background: rgba(236,72,153,0.10); border-left: 3px solid #ec4899; padding: 10px 12px; border-radius: 4px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <strong style="color: #f472b6; font-size:0.80rem;">Fase 1: Fase Belok Kanan, Putar Balik, &amp; Belok Kiri (Fase Persilangan)</strong>
+                        <span class="telemetry-pill-tag telemetry-pill-purple">Prioritas Gerakan Memotong</span>
+                    </div>
+                    <div style="color: #cbd5e1; margin-bottom: 6px;"><em>(Bapak menyarankan gerakan belok/putar balik berjalan terlebih dahulu dengan durasi lebih singkat)</em></div>
+                    <ul style="margin-left: 16px; color: #cbd5e1;">
+                        <li><strong>Jalan A (Arah Lembang):</strong> Kendaraan selalu diperbolehkan langsung <strong>Belok Kanan ke Panorama (Lampu HIJAU)</strong>, Lampu Lurus <strong>MERAH</strong>.</li>
+                        <li><strong>Jalan B (Arah Bandung):</strong> Lampu <strong>Putar Balik (U-turn) HIJAU</strong>, Lampu Lurus <strong>MERAH</strong>.</li>
+                        <li><strong>Panorama:</strong> Lampu <strong>Belok Kiri HIJAU</strong> (karena arus belok kiri Panorama menyatu searah dengan Jalan A ke Lembang, sehingga aman dan tidak memotong arus). Lampu Utama Panorama <strong>MERAH</strong>.</li>
+                        <li><strong>Tujuan:</strong> Kendaraan yang mau memotong jalan (belok kanan &amp; putar balik) bisa lewat bersamaan tanpa terhalang arus lurus dari arah berlawanan.</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(59,130,246,0.10); border-left: 3px solid #3b82f6; padding: 10px 12px; border-radius: 4px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <strong style="color: #60a5fa; font-size:0.80rem;">Fase 2: Fase Arus Utama Lurus (Jalan Setiabudi)</strong>
+                        <span class="telemetry-pill-tag telemetry-pill-cyan">Arus Lurus Bebas Hambatan</span>
+                    </div>
+                    <div style="color: #cbd5e1; margin-bottom: 6px;"><em>(Setelah fase belok/putar balik selesai, lampu belok menjadi merah dan arus lurus dibuka)</em></div>
+                    <ul style="margin-left: 16px; color: #cbd5e1;">
+                        <li><strong>Jalan A (Arah Lembang):</strong> Lampu Lurus <strong>HIJAU</strong>, Lampu Belok Kanan <strong>MERAH</strong>.</li>
+                        <li><strong>Jalan B (Arah Bandung):</strong> Lampu Lurus <strong>HIJAU</strong>, Lampu Putar Balik <strong>MERAH</strong>.</li>
+                        <li><strong>Panorama:</strong> Lampu Utama <strong>MERAH</strong>. (Lampu Belok Kiri dapat disetting <strong>HIJAU / Kuning Hati-hati</strong> selama lajur memungkinkan mengalir menyatu ke lajur kiri Jalan A).</li>
+                    </ul>
+                </div>
+
+                <div style="background: rgba(16,185,129,0.10); border-left: 3px solid #10b981; padding: 10px 12px; border-radius: 4px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <strong style="color: #34d399; font-size:0.80rem;">Fase Interupsi: Penyeberang Jalan / Kendaraan Menyeberang Penuh</strong>
+                        <span class="telemetry-pill-tag telemetry-pill-green">All-Red Proteksi Penuh</span>
+                    </div>
+                    <div style="color: #cbd5e1; margin-bottom: 6px;"><em>(Kondisi ketika ada pejalan kaki di zebra cross atau kendaraan dari Panorama yang perlu menyeberang penuh)</em></div>
+                    <ul style="margin-left: 16px; color: #cbd5e1;">
+                        <li><strong>Jalan A, Jalan B, &amp; Panorama:</strong> <strong>SEMUA LAMPU KENDARAAN MERAH</strong>.</li>
+                        <li><strong>Lampu Penyeberang Jalan (Zebra Cross):</strong> <strong>HIJAU</strong>.</li>
+                        <li><strong>Tujuan:</strong> Menjamin keamanan penuh bagi pejalan kaki atau kendaraan yang menyeberangi persimpangan.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- KOLOM KANAN: PUSAT DETEKSI VIDEO CCTV & AI DECISION ENGINE -->
+    <section class="right-column">
+
+        <!-- AI Gap Decision Card -->
+        <div class="ai-decision-card">
+            <div class="panel-header" style="margin-bottom:8px;">
+                <h3 style="font-size:0.95rem;font-weight:700;display:flex;align-items:center;gap:8px;">
+                    <span>🧠</span> AI Gap-Acceptance Engine
+                </h3>
+                <span class="badge-tag" id="ai-model-badge">TensorFlow COCO-SSD / Motion</span>
+            </div>
+
+            <div class="ai-hero-grid">
+                <div>
+                    <div id="ai-decision-badge" class="ai-status-badge status-idle">
+                        <span id="ai-status-icon">⏳</span>
+                        <span id="ai-status-text">MEMANTAU CELAH ARUS</span>
+                    </div>
+                    <div class="ai-metrics-strip">
+                        <div class="metric-pill">
+                            <div class="lbl">Celah Kritis (Tcrit)</div>
+                            <div class="val" id="metric-critical-gap">7.5 s</div>
+                        </div>
+                        <div class="metric-pill">
+                            <div class="lbl">Celah Terdekat (Tgap)</div>
+                            <div class="val" id="metric-nearest-gap">-</div>
+                        </div>
+                        <div class="metric-pill">
+                            <div class="lbl">Kepadatan Arus</div>
+                            <div class="val" id="metric-density">-</div>
+                        </div>
+                        <div class="metric-pill">
+                            <div class="lbl">Kerapatan Fisik</div>
+                            <div class="val" id="metric-headway">-</div>
+                        </div>
+                        <div class="metric-pill">
+                            <div class="lbl">Okupansi Refuge</div>
+                            <div class="val" id="metric-refuge">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confidence-gauge-box">
+                    <div class="confidence-header">
+                        <span>Skor Keyakinan (Confidence)</span>
+                        <span id="confidence-percentage" style="font-family:var(--font-mono);font-weight:700;color:#60a5fa;">0%</span>
+                    </div>
+                    <div class="confidence-bar-track">
+                        <div class="confidence-bar-fill" id="confidence-bar-fill"></div>
+                    </div>
+                    <span style="font-size:0.68rem;color:var(--fg-subtle);margin-top:6px;">
+                        Tingkat kepastian keputusan AI mempertimbangkan variansi kecepatan, penalti kepadatan, & margin jarak aman.
+                    </span>
+                </div>
+            </div>
+
+            <!-- Penalaran Langkah-demi-Langkah AI -->
+            <div class="ai-reasoning-log" id="ai-reasoning-log">
+                Menunggu input video untuk analisis celah dan estimasi waktu tiba (ETA) kendaraan...
+            </div>
+        </div>
+
+        <!-- CCTV Video Feeds Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">📹 Pemantauan Kamera CCTV Persimpangan</h3>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <label style="font-size:0.75rem;color:var(--fg-muted);font-weight:600;">Pilih Sumber Video:</label>
+                    <select id="preset-video-select" class="video-source-select" onchange="changeVideoPreset(this.value)">
+                        <option value="assets/traffic-video-web.mp4">traffic-video-web.mp4 (Cepat ~40MB)</option>
+                        <option value="assets/traffic-video.mp4">traffic-video.mp4 (Full HD ~417MB)</option>
+                        <option value="assets/PELINDUNG - PEMANTAUAN LINGKUNGAN KOTA BANDUNG - Google Chrome 2026-09-30 17-06-27.mp4">CCTV Pelindung Bandung 1</option>
+                        <option value="assets/PELINDUNG - PEMANTAUAN LINGKUNGAN KOTA BANDUNG - Google Chrome 2026-09-30 17-22-57.mp4">CCTV Pelindung Bandung 2</option>
+                        <option value="assets/WhatsApp Video 2026-09-30 at 20.30.58.mp4">CCTV Rekaman Lapangan (Setiabudi)</option>
+                        <option value="upload">Upload File Video Sendiri...</option>
+                    </select>
+                    <input type="file" id="file-input" accept="video/*" style="display:none;">
+                </div>
+            </div>
+
+            <!-- Camera Switcher Tabs -->
+            <div class="camera-tabs">
+                <button class="cam-tab active" data-cam="A" onclick="switchCameraTab('A')">
+                    <span class="dot"></span>
+                    <span>Kamera 1: Jalan A (Zebra Cross)</span>
+                </button>
+                <button class="cam-tab" data-cam="P" onclick="switchCameraTab('P')">
+                    <span class="dot"></span>
+                    <span>Kamera 2: Jl. Panorama (3 Arah Keluar)</span>
+                </button>
+                <button class="cam-tab" data-cam="B" onclick="switchCameraTab('B')">
+                    <span class="dot"></span>
+                    <span>Kamera 3: Jalan B (Arah Bawah)</span>
+                </button>
+                <button class="cam-tab" data-cam="AERIAL" onclick="switchCameraTab('AERIAL')">
+                    <span class="dot" style="background:#e879f9;box-shadow:0 0 6px #e879f9;"></span>
+                    <span>🚁 Kamera 4: Aerial Top-Down (Solusi Konsisten Rekomendasi Dosen)</span>
+                </button>
+            </div>
+
+            <!-- Video Player Display Container -->
+            <div class="video-display-area" id="video-display-area">
+                <video id="video-input" muted playsinline loop></video>
+                <canvas id="overlay-canvas"></canvas>
+            </div>
+
+            <!-- Video Toolbar: Play/Pause, Tools, Markers -->
+            <div class="video-toolbar">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button id="btn-play-pause" class="tool-btn" onclick="togglePlay()">
+                        <span id="play-icon">▶️</span> <span id="play-text">Putar Video</span>
+                    </button>
+                    <button class="tool-btn" onclick="restartVideo()">⏮️ Ulangi</button>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button id="btn-mark-stopline" class="tool-btn" onclick="toggleMarkStopLine()">
+                        📍 Tandai Garis Henti
+                    </button>
+                    <button id="btn-mark-refuge" class="tool-btn" onclick="toggleMarkRefugeZone()">
+                        🚸 Tandai Zona Refuge
+                    </button>
+                    <button id="btn-toggle-detector" class="tool-btn" onclick="toggleDetectorMode()">
+                        ⚡ Mode Detektor: COCO-SSD
+                    </button>
+                </div>
+            </div>
+
+            <!-- Kalibrasi Slider -->
+            <div class="calibration-strip">
+                <div class="slider-group">
+                    <label>Panjang Pantau (Kalibrasi): <span id="lbl-cal" style="color:var(--accent);font-family:var(--font-mono);">20 m</span></label>
+                    <input type="range" id="in-cal" min="5" max="60" value="20" step="1">
+                </div>
+                <div class="slider-group">
+                    <label>Threshold Gerakan: <span id="lbl-thresh" style="color:var(--accent);font-family:var(--font-mono);">30</span></label>
+                    <input type="range" id="in-thresh" min="10" max="80" value="30" step="2">
+                </div>
+                <div class="slider-group">
+                    <label>Batas Horizon Jalan: <span id="lbl-roadtop" style="color:var(--accent);font-family:var(--font-mono);">35%</span></label>
+                    <input type="range" id="in-roadtop" min="5" max="80" value="35" step="5">
+                </div>
+            </div>
+
+            <!-- Telemetri Deteksi AI Multi-Kendaraan & Analisis Arus Lalu Lintas -->
+            
+            <!-- Kelompok 1: Klasifikasi & Jumlah Kendaraan -->
+            <div class="telemetry-section-title">
+                <span>🚘</span> Klasifikasi & Cacah Kendaraan AI (Real-Time Video)
+            </div>
+            <div class="telemetry-grid-compact">
+                <div class="telemetry-box">
+                    <div class="title">Total Kendaraan</div>
+                    <div class="number" id="tele-total-vehicles" style="color:#34d399;">0 unit</div>
+                    <span class="telemetry-pill-tag telemetry-pill-green">Semua Jenis</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">🚗 Mobil (Car/SUV)</div>
+                    <div class="number" id="tele-count-cars" style="color:#38bdf8;">0 unit</div>
+                    <span class="telemetry-pill-tag telemetry-pill-cyan">Roda 4</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">🏍️ Sepeda Motor</div>
+                    <div class="number" id="tele-count-motorcycles" style="color:#fb923c;">0 unit</div>
+                    <span class="telemetry-pill-tag telemetry-pill-orange">Roda 2</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">🚚 Truk & Bus</div>
+                    <div class="number" id="tele-count-trucks" style="color:#c084fc;">0 unit</div>
+                    <span class="telemetry-pill-tag telemetry-pill-purple">Kend. Berat</span>
+                </div>
+            </div>
+
+            <!-- Kelompok 2: Analisis Kepadatan & Kerapatan Kendaraan -->
+            <div class="telemetry-section-title">
+                <span>📊</span> Analisis Kepadatan & Kerapatan Arus Jalan
+            </div>
+            <div class="telemetry-grid-compact">
+                <div class="telemetry-box">
+                    <div class="title">Kepadatan Arus (k)</div>
+                    <div class="number" id="tele-density-val" style="color:#facc15;">0.0 kend/100m</div>
+                    <span id="tele-density-badge" class="telemetry-pill-tag telemetry-pill-green">Lancar (LOS A)</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Kerapatan Fisik (Headway)</div>
+                    <div class="number" id="tele-space-headway" style="color:#60a5fa;">Bebas</div>
+                    <span id="tele-space-status" class="telemetry-pill-tag telemetry-pill-cyan">Jarak Bebas</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Waktu Antara (Time Headway)</div>
+                    <div class="number" id="tele-time-headway" style="color:#a78bfa;">-</div>
+                    <span class="telemetry-pill-tag telemetry-pill-purple">Detik / Kend</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Okupansi Permukaan Jalan</div>
+                    <div class="number" id="tele-road-occupancy" style="color:#f472b6;">0.0%</div>
+                    <span class="telemetry-pill-tag telemetry-pill-yellow">Luas Area Terpakai</span>
+                </div>
+            </div>
+
+            <!-- Kelompok 3: Dinamika Kecepatan & Jarak Garis Henti -->
+            <div class="telemetry-section-title">
+                <span>⚡</span> Dinamika Kecepatan & Kedatangan ke Garis Henti
+            </div>
+            <div class="telemetry-grid-compact">
+                <div class="telemetry-box">
+                    <div class="title">Mendekati Garis</div>
+                    <div class="number" id="tele-approaching" style="color:#f59e0b;">0 unit</div>
+                    <span class="telemetry-pill-tag telemetry-pill-yellow">Zona Henti</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Kecepatan Rata-rata</div>
+                    <div class="number" id="tele-avg-speed" style="color:#38bdf8;">0 km/h</div>
+                    <span class="telemetry-pill-tag telemetry-pill-cyan">Kecepatan Arus</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Jarak Rata-rata ke Garis</div>
+                    <div class="number" id="tele-avg-distance" style="color:#10b981;">-</div>
+                    <span class="telemetry-pill-tag telemetry-pill-green">Jarak Fisik</span>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Estimasi Waktu Tiba (ETA)</div>
+                    <div class="number" id="tele-avg-eta" style="color:#fb7185;">-</div>
+                    <span class="telemetry-pill-tag telemetry-pill-red">Waktu ke Stopline</span>
+                </div>
+            </div>
+
+            <!-- Kelompok 4: Status Sinyal Lalu Lintas (3-State Controller Simpang) -->
+            <div class="telemetry-section-title">
+                <span>🚦</span> Pengendali Sinyal Adaptif (3-State Controller Simpang)
+            </div>
+            <div class="telemetry-grid">
+                <div class="telemetry-box">
+                    <div class="title">State Aktif AI</div>
+                    <div class="number" id="tele-traffic-state" style="font-size:0.95rem;color:#f472b6;">STATE 1</div>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Antrean U-Turn/Belok</div>
+                    <div class="number" id="tele-queue-turn" style="color:#f472b6;">0 mobil</div>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Antrean Lurus Utama</div>
+                    <div class="number" id="tele-queue-straight" style="color:#60a5fa;">0 mobil</div>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Antrean Panorama</div>
+                    <div class="number" id="tele-queue-panorama" style="color:#c084fc;">0 mobil</div>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Durasi Hijau AI</div>
+                    <div class="number" id="tele-ai-duration" style="color:#34d399;">15 s</div>
+                </div>
+                <div class="telemetry-box">
+                    <div class="title">Status Skip State 3</div>
+                    <div class="number" id="tele-skip-status" style="font-size:0.88rem;color:#10b981;">Siaga</div>
+                </div>
+                <div class="telemetry-box" style="display:none;">
+                    <div class="title">Objek Terlacak Video</div>
+                    <div class="number" id="tele-tracked-blobs">0</div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</main>
+
+<!-- Logika AI Engine Terpusat -->
+<script src="ai-engine.js"></script>
+
+<!-- Script Gabungan: Simulasi Simpang Panorama & Deteksi Video CCTV -->
+<script>
+/* =========================================================================
+   BAGIAN 1: SIMULASI GEOMETRIS SIMPANG PANORAMA (CANVAS 2D)
+   ========================================================================= */
+function el(id) { return document.getElementById(id); }
+const canvas = document.getElementById('panorama-canvas');
+const context = canvas.getContext('2d');
+const AX = 300, BX = 432, BX_TURN = 392, LEN = 32, WID = 18;
+// Offset lajur kiri & kanan untuk Jalan A (ke Lembang) dan Jalan B (ke Bandung)
+// Pemisahan 28px center-to-center (WID=18, gap=10px) agar tidak berdempetan
+const AX_L = AX - 14, AX_R = AX + 14;  // Lajur kiri x=286, kanan x=314 (Jalan A)
+const BX_L = BX - 14, BX_R = BX + 14;  // Lajur kiri x=418, kanan x=446 (Jalan B)
+
+function mk(pts) {
+    const seg = []; let length = 0;
+    for (let i = 1; i < pts.length; i++) {
+        const distance = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+        seg.push([length, distance]); length += distance;
+    }
+    return { pts, seg, L: length, stops: [] };
+}
+
+function atPos(path, distance) {
+    const d = Math.max(0, Math.min(path.L, distance));
+    let i = 0;
+    while (i < path.seg.length - 1 && d > path.seg[i][0] + path.seg[i][1]) i++;
+    const a = path.pts[i], b = path.pts[i + 1];
+    const t = path.seg[i][1] > 0 ? Math.min(1, Math.max(0, (d - path.seg[i][0]) / path.seg[i][1])) : 0;
+    return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t };
+}
+
+function at(path, distance) {
+    const p = atPos(path, distance);
+    // Lookahead simetris berbasis wheelbase (±8px) untuk perhitungan sudut tangen stabil & kontinu tanpa patahan
+    const delta = 8;
+    const s1 = Math.max(0, distance - delta);
+    const s2 = Math.min(path.L, distance + delta);
+    const p1 = atPos(path, s1);
+    const p2 = atPos(path, s2);
+    let dx = p2.x - p1.x, dy = p2.y - p1.y;
+    if (Math.hypot(dx, dy) < 0.001) {
+        let i = 0;
+        while (i < path.seg.length - 1 && distance > path.seg[i][0] + path.seg[i][1]) i++;
+        dx = path.pts[i + 1][0] - path.pts[i][0];
+        dy = path.pts[i + 1][1] - path.pts[i][1];
+    }
+    const a = (dx === 0 && dy === 0) ? 0 : Math.atan2(dy, dx);
+    return { x: p.x, y: p.y, a };
+}
+
+// Generator kurva Bezier kubik untuk belokan super mulus & kontinu C1
+function bezierCurve(p0, p1, p2, p3, steps = 24) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const u = 1 - t;
+        const tt = t * t, uu = u * u;
+        const uuu = uu * u, ttt = tt * t;
+        const x = uuu * p0[0] + 3 * uu * t * p1[0] + 3 * u * tt * p2[0] + ttt * p3[0];
+        const y = uuu * p0[1] + 3 * uu * t * p1[1] + 3 * u * tt * p2[1] + ttt * p3[1];
+        pts.push([x, y]);
+    }
+    return pts;
+}
+
+// Generator busur elips/lingkaran presisi
+function arcPoints(cx, cy, rx, ry, startAngle, endAngle, steps = 36) {
+    const pts = [];
+    for (let i = 0; i <= steps; i++) {
+        const angle = startAngle + (endAngle - startAngle) * (i / steps);
+        pts.push([cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)]);
+    }
+    return pts;
+}
+
+// Deteksi kelengkungan lintasan (Path Curvature) untuk regulasi kecepatan menikung stabil
+function getPathCurvature(path, distance) {
+    const s1 = Math.max(0, distance - 8);
+    const s2 = Math.min(path.L, distance + 8);
+    if (s2 - s1 < 1) return 0;
+    const a1 = at(path, s1).a;
+    const a2 = at(path, s2).a;
+    let da = a2 - a1;
+    while (da < -Math.PI) da += 2 * Math.PI;
+    while (da > Math.PI) da -= 2 * Math.PI;
+    return Math.abs(da) / (s2 - s1);
+}
+
+function find(path, predicate) {
+    for (let distance = 0; distance < path.L; distance++) {
+        const point = at(path, distance);
+        if (predicate(point.x, point.y)) return distance;
+    }
+    return 1e9;
+}
+
+// Definisi kurva belokan yang mulus dan presisi (kontinuitas tangen sempurna):
+// 1. Putar balik atas: dari Jalan A kanan (x=314) ke Jalan B kiri (x=418), center x=366, radius=52
+const arcUAtas = arcPoints(366, 295, 52, 52, Math.PI, 2 * Math.PI, 36);
+
+// 2. Putar balik bawah: dari Jalan B U-turn (x=392) ke Jalan A kiri (x=286), center x=339, rx=53, ry=56
+const arcUBawah = arcPoints(339, 470, 53, 56, 0, Math.PI, 36);
+
+// 3. Belokan Jalan B ke Jl. Panorama (dari lajur tepi BX_R=446 ke x=500 pada y=488)
+const curveBpan = bezierCurve([BX_R, 440], [BX_R, 470], [470, 488], [500, 488], 24);
+const curveAup = bezierCurve([BX_L, 435], [BX_L, 468], [470, 488], [500, 488], 24);
+
+// Belokan langsung Jalan A ke Jl. Panorama (Fase 1: Belok Kanan Langsung dari lajur kanan AX_R=314)
+const curveApan = bezierCurve([AX_R, 620], [AX_R, 540], [420, 488], [500, 488], 28);
+
+// 4. Belokan Jalan A ke Vitasari Bakery (dari x=286 ke x=210 pada y=449)
+const curveAvit = bezierCurve([AX_L, 520], [AX_L, 475], [250, 449], [210, 449], 24);
+
+// 5. Belokan Vitasari keluar ke Jalan A Gerlong (dari x=210 pada y=412 ke x=314 pada y=320)
+const curveVitA = bezierCurve([210, 412], [270, 412], [AX_R, 370], [AX_R, 320], 24);
+
+// 6. Belokan Panorama ke Jalan B Bandung (dari x=490 pada y=530 ke x=418 pada y=600)
+const curvePin = bezierCurve([490, 530], [440, 530], [BX_L, 560], [BX_L, 600], 24);
+
+// 7. Belokan Panorama ke UPI/Gerlong (dari x=470 pada y=530 ke x=314 pada y=440)
+const curvePupi = bezierCurve([470, 530], [370, 530], [AX_R, 490], [AX_R, 440], 28);
+
+// 8. Menyeberang penuh Panorama ke Vitasari (dari x=470 pada y=530 ke x=250 pada y=449)
+const curvePvit = bezierCurve([470, 530], [370, 530], [350, 449], [250, 449], 28);
+
+const paths = {
+    // Jalan A ke Lembang/Gerlong: 2 lajur berdampingan
+    Astr:  mk([[AX_L, 930], [AX_L, -40]]),  // Lajur kiri (lurus Lembang)
+    Astr2: mk([[AX_L, 930], [AX_L, -40]]),  // Lajur kiri kedua
+    Avit:  mk([[AX_L, 930], ...curveAvit, [-40, 449]]),
+    Au:    mk([[AX_R, 930], ...arcUAtas, [BX_L, 930]]),
+    Apan:  mk([[AX_R, 930], ...curveApan, [760, 488]]), // Belok kanan langsung ke Panorama
+    Bu:    mk([[BX_TURN, -40], ...arcUBawah, [AX_L, -40]]),
+    // Jalan B ke Bandung: 2 lajur berdampingan
+    Bdn:   mk([[BX_L, -40], [BX_L, 930]]),   // Lajur kiri (default)
+    Bdn2:  mk([[BX_R, -40], [BX_R, 930]]),   // Lajur kanan
+    Bpan:  mk([[BX_R, -40], ...curveBpan, [760, 488]]),
+    Pin:   mk([[760, 530], ...curvePin, [BX_L, 930]]),
+    Pvit:  mk([[760, 530], ...curvePvit, [-40, 449]]),
+    Pupi:  mk([[760, 530], ...curvePupi, [AX_R, -40]]),
+    VitA:  mk([[-40, 412], ...curveVitA, [AX_R, -40]])
+};
+
+const addStop = (path, signal, predicate) => path.stops.push({ sig: signal, s: find(path, predicate) });
+
+// Kendaraan lurus Jalan A ke arah Gerlong/Lembang (dikendalikan sinyal Lurus A)
+['Astr', 'Astr2', 'Avit', 'Au'].forEach(key => addStop(paths[key], 'A', (x, y) => x < 320 && y <= 650));
+
+// Kendaraan belok kanan langsung Jalan A ke Panorama (dikendalikan sinyal Belok Kanan A_TURN)
+addStop(paths.Apan, 'A_TURN', (x, y) => x < 330 && y <= 650);
+
+// VitA (Vitasari → Gerlong): belok kiri bebas tanpa lampu merah, searah arus Jalan A ke Gerlong
+
+// Kendaraan Putar Balik dari Jalan B (Bu) di bukaan median (dikendalikan sinyal B_UTURN di lajur khusus U-Turn)
+addStop(paths.Bu, 'B_UTURN', (x, y) => x < 405 && y >= 465);
+
+// Kendaraan lurus Jalan B (Bdn, Bdn2), belok Panorama (Bpan), & putar balik atas ke Bandung (Au)
+['Au', 'Bdn', 'Bdn2', 'Bpan'].forEach(key => addStop(paths[key], 'B', (x, y) => x > 410 && y >= 435));
+
+// Akses keluar Jl. Panorama:
+// Pupi (Belok Kiri ke Gerlong/UPI/Lembang): dikendalikan sinyal P_LEFT (mengalir menyatu searah Jalan A)
+addStop(paths.Pupi, 'P_LEFT', (x, y) => x <= 560);
+
+// Pin (menyeberang ke Jalan B Bandung) & Pvit (menyeberang ke Vitasari): dikendalikan sinyal P_MAIN (perlu interupsi menyeberang penuh)
+addStop(paths.Pin, 'P_MAIN', (x, y) => x <= 560);
+addStop(paths.Pvit, 'P_MAIN', (x, y) => x <= 560);
+
+// =========================================================================
+// DEFINISI STATE MACHINE SISTEM KENDALI LALU LINTAS SIMPANG PANORAMA
+// Sesuai Rincian Fase Hasil Diskusi (Adaptive Real-Time AI)
+// =========================================================================
+const phases = [
+    // Index 0: FASE 1 (Fase Belok Kanan, Putar Balik, & Belok Kiri - Fase Persilangan)
+    {
+        id: 'STATE_1',
+        stateNum: 1,
+        n: 'Fase 1 – Belok Kanan, Putar Balik, & Belok Kiri (Fase Persilangan)',
+        d: 15,
+        g: ['A_TURN', 'B_UTURN', 'P_LEFT'],
+        yellow: null,
+        ped: null
+    },
+    // Index 1: Transisi 1 (Kuning pengosongan belok & putar balik)
+    {
+        id: 'TRANS_1',
+        stateNum: 1.5,
+        n: 'Transisi 1 – Kuning Pengosongan Belok Kanan & Putar Balik',
+        d: 3,
+        g: ['P_LEFT'],
+        yellow: { A_TURN: 3, B_UTURN: 3 },
+        ped: null
+    },
+    // Index 2: FASE 2 (Fase Arus Utama Lurus Jalan Setiabudi)
+    {
+        id: 'STATE_2',
+        stateNum: 2,
+        n: 'Fase 2 – Arus Utama Lurus (Jalan Setiabudi)',
+        d: 40,
+        g: ['A', 'B', 'P_LEFT'],
+        yellow: null,
+        ped: null
+    },
+    // Index 3: Transisi 2 (Kuning pengosongan arus lurus)
+    {
+        id: 'TRANS_2',
+        stateNum: 2.5,
+        n: 'Transisi 2 – Kuning Pengosongan Arus Lurus',
+        d: 3,
+        g: [],
+        yellow: { A: 3, B: 3, BZ: 3, P_LEFT: 3 },
+        ped: null
+    },
+    // Index 4: FASE 3 (FASE INTERUPSI: PENYEBERANG JALAN / KENDARAAN MENYEBERANG PENUH)
+    // Sesuai Arahan Hasil Diskusi:
+    // (Kondisi ketika ada pejalan kaki di zebra cross atau kendaraan dari Panorama yang perlu menyeberang penuh)
+    // - Jalan A, Jalan B, & Panorama: SEMUA LAMPU KENDARAAN MERAH.
+    // - Lampu Penyeberang Jalan (Zebra Cross): HIJAU.
+    // - Tujuan: Menjamin keamanan penuh bagi pejalan kaki atau kendaraan yang menyeberangi persimpangan.
+    {
+        id: 'STATE_INTERRUPT',
+        stateNum: 3,
+        n: 'Fase 3 – Interupsi: Penyeberang Jalan / Kendaraan Menyeberang Penuh',
+        d: 12,
+        g: [],
+        yellow: null,
+        ped: 'solid'
+    },
+    // Index 5: Pelican Clearance (Berkedip)
+    {
+        id: 'INTERRUPT_FLASH',
+        stateNum: 3.7,
+        n: 'Fase 3 – Interupsi Pejalan Kaki Berkedip (Clearance)',
+        d: 4,
+        g: [],
+        yellow: null,
+        ped: 'flash'
+    },
+    // Index 6: Transisi Pengosongan Simpang & Zebra Cross
+    {
+        id: 'INTERRUPT_TRANS',
+        stateNum: 3.9,
+        n: 'Transisi 3 – Pengosongan Zebra Cross & Simpang',
+        d: 2,
+        g: [],
+        yellow: null,
+        ped: null
+    }
+];
+
+let pedestrianTimer = 0, uid = 0, phase = 0, phaseTime = 0, cars = [], pedestrians = [], simSpeed = 1;
+let pedestrianBeepElapsed = 0;
+const simulatedQueues = { turn: 0, panorama: 0 };
+const videoTrafficState = {
+    panoramaCameraActive: false,
+    panoramaGapOut: false,
+    panoramaDensityPer100m: 0,
+    panoramaQueueLength_m: 0,
+    jalanBCameraActive: false,
+    jalanBSpillback: false,
+    jalanBQueueLength_m: 0,
+    arterialCameraActive: false,
+    arterialHeadwaySeconds: 0,
+    arterialDensityPer100m: 0,
+    arterialAverageSpeed_kmh: 0,
+    pedestrianRequested: false,
+    pedestrianVerified: false
+};
+let timers = { a: 0, b: 1, p: 2, v: 4, w: 0 };
+const signals = {}, yellow = {}, refuge = { L: 213, R: 507 };
+let soundEnabled = true, audioContext = null, lastBeep = null, lastBeepAt = 0, night = false;
+
+// 1. Hitung antrean lajur Putar Balik median bawah (U-Turn B) & Belok Kanan A (ke Panorama)
+function countTurnVehicles() {
+    const simCount = cars.filter(car => {
+        if (car.k !== 'Bu' && car.k !== 'Apan') return false;
+        const front = car.s + LEN / 2;
+        const stop = car.p.stops[0];
+        return stop ? (stop.s - front > -25 && stop.s - front < 260) : false;
+    }).length;
+    return simCount + (simulatedQueues.turn || 0);
+}
+
+// 2. Hitung antrean kendaraan arus lurus utama (Jalan A, Jalan B, & Vitasari ke Gerlong)
+function countStraightVehicles() {
+    const simCount = cars.filter(car => {
+        if (!['Astr', 'Astr2', 'Avit', 'Bdn', 'Bdn2', 'Au', 'Bpan', 'VitA'].includes(car.k)) return false;
+        const front = car.s + LEN / 2;
+        const stop = car.p.stops[0];
+        return stop ? (stop.s - front > -25 && stop.s - front < 300 && car.v < 25) : false;
+    }).length;
+    const videoBonus = (videoTrafficState.arterialCameraActive && videoTrafficState.arterialDensityPer100m > 0)
+        ? Math.round(videoTrafficState.arterialDensityPer100m / 7)
+        : 0;
+    return Math.max(simCount, videoBonus);
+}
+
+// 3. Hitung antrean kendaraan Jl. Panorama yang menyeberang penuh (Pin: ke Bandung, Pvit: ke Vitasari)
+function countPanoramaCrossingVehicles() {
+    const simCount = cars.filter(car => {
+        if (car.k !== 'Pin' && car.k !== 'Pvit') return false;
+        const pos = at(car.p, car.s);
+        return pos.x >= 430 || car.s < 300;
+    }).length;
+    const videoCount = (videoTrafficState.panoramaCameraActive && videoTrafficState.panoramaDensityPer100m > 3)
+        ? Math.round(videoTrafficState.panoramaDensityPer100m / 5)
+        : 0;
+    return simCount + videoCount + (simulatedQueues.panorama || 0);
+}
+
+function countPanoramaVehicles() {
+    return countPanoramaCrossingVehicles();
+}
+
+function enterPhase(index) {
+    phase = index;
+    phaseTime = 0;
+    const current = phases[phase];
+
+    if (current.id === 'STATE_1') {
+        // Fase 1: Durasi belok/putar balik berjalan terlebih dahulu dengan durasi lebih singkat dinamis (10-22 detik)
+        const turnQueue = countTurnVehicles();
+        current.d = Math.max(10, Math.min(22, 10 + turnQueue * 2.0));
+        
+        const logMsg = `🧠 [AI Traffic Control] FASE 1 AKTIF: Fase Belok Kanan, Putar Balik, & Belok Kiri (Fase Persilangan). Lampu Belok Kanan A (ke Panorama), Putar Balik B (U-Turn), & Belok Kiri Panorama HIJAU. Lampu Lurus A & B MERAH. Durasi AI: ${current.d.toFixed(1)}s. Arus memotong berjalan bersamaan tanpa terhalang arus lurus.`;
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = logMsg;
+        console.log(logMsg);
+    } else if (current.id === 'STATE_2') {
+        // Fase 2: Durasi dinamis arus utama lurus (20-55 detik)
+        const straightQueue = countStraightVehicles();
+        const MAX_GREEN_TIME = 55;
+        const MIN_GREEN_TIME = 20;
+        current.d = Math.min(MAX_GREEN_TIME, Math.max(MIN_GREEN_TIME, MIN_GREEN_TIME + straightQueue * 2.0));
+        
+        const logMsg = `🧠 [AI Traffic Control] FASE 2 AKTIF: Fase Arus Utama Lurus (Jalan Setiabudi). Lampu Lurus A & B HIJAU, Lampu Belok Kanan A & Putar Balik B MERAH. Lampu Utama Panorama MERAH. Durasi AI: ${current.d.toFixed(1)}s (max: ${MAX_GREEN_TIME}s).`;
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = logMsg;
+        console.log(logMsg);
+    } else if (current.id === 'STATE_INTERRUPT') {
+        const logEl = el('ai-reasoning-log');
+        const logMsg = `🚶 [AI Traffic Control] FASE INTERUPSI AKTIF: Penyeberang Jalan / Kendaraan Menyeberang Penuh. Kondisi: Ada pejalan kaki di zebra cross atau kendaraan dari Panorama yang perlu menyeberang penuh. SEMUA LAMPU KENDARAAN (Jalan A, Jalan B, & Panorama) MERAH TOTAL! Lampu Penyeberang Jalan (Zebra Cross): HIJAU. Menjamin keamanan penuh bagi pejalan kaki atau kendaraan yang menyeberangi persimpangan!`;
+        if (logEl) logEl.innerText = logMsg;
+        console.log(logMsg);
+    } else if (current.id === 'TRANS_1') {
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `⚠️ [Transisi 1] Lampu kuning Belok Kanan & Putar Balik aktif (3s). Mempersiapkan Arus Utama Lurus (Fase 2)...`;
+    } else if (current.id === 'TRANS_2') {
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `⚠️ [Transisi 2] Lampu kuning arus lurus aktif (3s). AI memeriksa sensor/kamera CCTV antrean penyeberang & kendaraan...`;
+    } else if (current.id === 'INTERRUPT_FLASH') {
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `⚠️ [Clearance] Lampu penyeberang jalan berkedip (4s). Menuntaskan penyeberangan...`;
+    } else if (current.id === 'INTERRUPT_TRANS') {
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `⚠️ [Transisi 3] Pengosongan zebra cross & persimpangan (2s)...`;
+    }
+
+    updateSignals();
+    updateHUDPhase();
+    updateTelemetryStats();
+}
+
+function updateHUDPhase() {
+    const current = phases[phase];
+    const nameEl = document.getElementById('hud-phase-name');
+    const timerEl = document.getElementById('hud-phase-timer');
+    const barEl = document.getElementById('hud-phase-bar');
+    if (!nameEl) return;
+
+    nameEl.innerText = current.n;
+    const remaining = Math.max(0, Math.ceil(current.d - phaseTime));
+    timerEl.innerText = `${remaining} s`;
+    const progress = Math.min(100, Math.max(0, (phaseTime / current.d) * 100));
+    barEl.style.width = `${progress}%`;
+
+    const getDotClass = sigKey => {
+        if (signals[sigKey]) return 'sig-dot green';
+        if (yellow[sigKey]) return 'sig-dot yellow';
+        return 'sig-dot red';
+    };
+
+    // Update mini signal chips for all 7 movements
+    const dotTurn = document.getElementById('sig-dot-turn');
+    const dotATurn = document.getElementById('sig-dot-aturn');
+    const dotA = document.getElementById('sig-dot-a');
+    const dotB = document.getElementById('sig-dot-b');
+    const dotPLeft = document.getElementById('sig-dot-pleft');
+    const dotPMain = document.getElementById('sig-dot-pmain');
+    const dotP = document.getElementById('sig-dot-p');
+    const dotPed = document.getElementById('sig-dot-ped');
+
+    if (dotTurn) dotTurn.className = getDotClass('B_UTURN');
+    if (dotATurn) dotATurn.className = getDotClass('A_TURN');
+    if (dotA) dotA.className = getDotClass('A');
+    if (dotB) dotB.className = getDotClass('B');
+    if (dotPLeft) dotPLeft.className = getDotClass('P_LEFT');
+    if (dotPMain) dotPMain.className = getDotClass('P_MAIN');
+    if (dotP) dotP.className = getDotClass('P_MAIN');
+    if (dotPed) dotPed.className = current.ped === 'flash' ? 'sig-dot yellow' : (current.ped ? 'sig-dot green' : 'sig-dot red');
+}
+
+function updateTelemetryStats() {
+    const cur = phases[phase];
+    const turnCount = countTurnVehicles();
+    const straightCount = countStraightVehicles();
+    const panCount = countPanoramaVehicles();
+
+    const tState = el('tele-traffic-state');
+    if (tState) {
+        if (cur.id === 'STATE_1') {
+            tState.innerText = 'FASE 1 (Putar Balik & Belok Kiri)';
+            tState.style.color = '#f472b6';
+        } else if (cur.id === 'STATE_2') {
+            tState.innerText = 'FASE 2 (Arus Utama Lurus)';
+            tState.style.color = '#60a5fa';
+        } else if (cur.id === 'STATE_INTERRUPT') {
+            tState.innerText = 'FASE 3 (Interupsi / All-Red)';
+            tState.style.color = '#34d399';
+        } else if (cur.id === 'INTERRUPT_FLASH') {
+            tState.innerText = 'FASE 3 (Clearance Berkedip)';
+            tState.style.color = '#34d399';
+        } else if (cur.id.startsWith('TRANS') || cur.id === 'INTERRUPT_TRANS') {
+            tState.innerText = 'TRANSISI PENGOSONGAN';
+            tState.style.color = '#f59e0b';
+        } else {
+            tState.innerText = 'FASE INTERUPSI';
+            tState.style.color = '#34d399';
+        }
+    }
+
+    const tTurn = el('tele-queue-turn');
+    if (tTurn) tTurn.innerText = `${turnCount} kendaraan`;
+
+    const tStraight = el('tele-queue-straight');
+    if (tStraight) tStraight.innerText = `${straightCount} kendaraan`;
+
+    const tPan = el('tele-queue-panorama');
+    if (tPan) tPan.innerText = `${panCount} kendaraan`;
+
+    const tDur = el('tele-ai-duration');
+    if (tDur) tDur.innerText = `${cur.d.toFixed(0)} s`;
+}
+
+function pedestrianAudio(dt) {
+    if (!soundEnabled) return;
+    const current = phases[phase];
+    if (!current.ped) { lastBeep = null; return; }
+    pedestrianBeepElapsed += dt;
+    const interval = current.ped === 'flash' ? 0.3 : 0.65;
+    if (pedestrianBeepElapsed < interval) return;
+    pedestrianBeepElapsed = 0;
+    try {
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioContext.state === 'suspended') audioContext.resume();
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.setValueAtTime(current.ped === 'flash' ? 1040 : 880, audioContext.currentTime);
+        gain.gain.setValueAtTime(0.04, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.12);
+    } catch (e) {}
+}
+
+function stepPedestrians(dt) {
+    const canWalk = Boolean(phases[phase].ped);
+    if (!phases[phase].ped) {
+        pedestrianTimer -= dt;
+        if (pedestrianTimer <= 0) {
+            pedestrianTimer = 1.2 + Math.random() * 1.5;
+            const side = Math.random() < .5 ? 0 : 1;
+            if (pedestrians.filter(p => p.s === side && p.st === 'wait').length < 4) {
+                pedestrians.push({ s: side, x: (side ? refuge.R : refuge.L) + Math.random() * 16 - 8, y: 608 + Math.random() * 24, st: 'wait', dl: null, t: 0 });
+            }
+        }
+    } else {
+        // Saat lampu hijau penyeberang aktif: pastikan ada orang menyeberang
+        if (pedestrians.filter(p => p.st === 'walk' || p.st === 'wait').length === 0) {
+            pedestrians.push({ s: 0, x: refuge.L, y: 614 + Math.random() * 12, st: 'walk', dl: 0, t: 0 });
+            pedestrians.push({ s: 1, x: refuge.R, y: 614 + Math.random() * 12, st: 'walk', dl: 0.5, t: 0 });
+        }
+    }
+
+    pedestrians.forEach(person => {
+        if (person.st === 'wait') {
+            if (canWalk) {
+                if (person.dl === null) person.dl = Math.random() * 1.5;
+                person.dl -= dt;
+                if (person.dl <= 0) person.st = 'walk';
+            }
+        } else if (person.st === 'walk') {
+            const target = person.s ? refuge.L : refuge.R;
+            const distance = target - person.x;
+            const step = 48 * dt;
+            if (Math.abs(distance) <= step) { person.x = target; person.st = 'done'; person.t = 0; }
+            else person.x += Math.sign(distance) * step;
+        } else person.t += dt;
+    });
+    pedestrians = pedestrians.filter(p => !(p.st === 'done' && p.t > 2));
+}
+
+const nightCanvas = document.createElement('canvas');
+nightCanvas.width = 720; nightCanvas.height = 900;
+(function () {
+    const nightContext = nightCanvas.getContext('2d');
+    nightContext.fillStyle = 'rgba(6,12,30,.62)';
+    nightContext.fillRect(0, 0, 720, 900);
+    nightContext.globalCompositeOperation = 'destination-out';
+    nightContext.translate(360, 620);
+    nightContext.scale(1, .36);
+    const gradient = nightContext.createRadialGradient(0, 0, 20, 0, 0, 175);
+    gradient.addColorStop(0, 'rgba(0,0,0,1)');
+    gradient.addColorStop(.6, 'rgba(0,0,0,.85)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    nightContext.fillStyle = gradient;
+    nightContext.beginPath();
+    nightContext.arc(0, 0, 175, 0, 7);
+    nightContext.fill();
+})();
+
+function updateSignals() {
+    const current = phases[phase];
+    const allSignals = ['A', 'A_TURN', 'B', 'BZ', 'B_UTURN', 'P_LEFT', 'P_MAIN', 'TURN', 'L4', 'P'];
+    allSignals.forEach(key => {
+        let isG = current.g.includes(key);
+        if (key === 'TURN' || key === 'L4') isG = isG || current.g.includes('B_UTURN');
+        if (key === 'B_UTURN') isG = isG || current.g.includes('TURN') || current.g.includes('L4');
+        if (key === 'P') isG = isG || current.g.includes('P_MAIN');
+        signals[key] = isG;
+
+        let isY = Boolean(current.yellow?.[key]);
+        if (key === 'TURN' || key === 'L4') isY = isY || Boolean(current.yellow?.['B_UTURN']);
+        if (key === 'B_UTURN') isY = isY || Boolean(current.yellow?.['TURN']) || Boolean(current.yellow?.['L4']);
+        if (key === 'P') isY = isY || Boolean(current.yellow?.['P_MAIN']);
+        yellow[key] = isY;
+    });
+}
+
+// isFree: pastikan jarak aman sebelum spawn agar tidak ada mobil menumpuk saat muncul
+function isFree(path, x, y) {
+    const samePathBlocked = cars.some(car => car.p === path && car.s < 75);
+    if (samePathBlocked) return false;
+    const physicalBlocked = cars.some(car => {
+        const point = at(car.p, car.s);
+        return Math.hypot(point.x - x, point.y - y) < 60;
+    });
+    return !physicalBlocked;
+}
+
+function spawn(key, color, tag) {
+    const path = paths[key];
+    if (!path) return;
+    // Batas global: maksimal 6 mobil aktif di seluruh kanvas agar persimpangan lega dan bebas tumpukan
+    if (cars.length >= 6) return;
+
+    // Untuk jalur manuver/belokan (U-turn, Vitasari, Panorama): maksimal 1 mobil saja agar tidak bertumpuk
+    const isManeuver = ['Bu', 'VitA', 'Au', 'Apan', 'Bpan', 'Pin', 'Pvit', 'Pupi'].includes(key);
+    const existingSame = cars.filter(c => c.k === key);
+    if (isManeuver && existingSame.length >= 1) return;
+    if (existingSame.length >= 2) return;
+
+    // Aturan antrean lampu merah: Jika sudah ada mobil yang berhenti di lampu merah pada koridor ini,
+    // JANGAN spawn mobil baru di lajur yang sama! Tunggu lampu hijau dan mobil tersebut berangkat dulu.
+    const isRedLightQueueBlocked = cars.some(c => {
+        if (c.v > 8) return false;
+        const q = at(c.p, c.s);
+        // Garis henti Jalan A Lurus (lajur kiri):
+        if (['Astr', 'Astr2', 'Avit'].includes(key) && ['Astr', 'Astr2', 'Avit'].includes(c.k)) {
+            return q.y >= 640 && q.y <= 750 && q.x < 300;
+        }
+        // Garis henti Jalan A Belok Kanan & U-Turn (lajur kanan):
+        if (['Apan', 'Au'].includes(key) && ['Apan', 'Au'].includes(c.k)) {
+            return q.y >= 640 && q.y <= 750 && q.x >= 300;
+        }
+        // Garis henti Jalan B (y ≈ 435):
+        if (['Bdn', 'Bdn2', 'Bpan'].includes(key) && ['Bdn', 'Bdn2', 'Bpan'].includes(c.k)) {
+            return q.y >= 380 && q.y <= 470;
+        }
+        // Garis henti U-Turn Bawah (y ≈ 470):
+        if (key === 'Bu' && c.k === 'Bu') {
+            return q.y >= 430 && q.y <= 490;
+        }
+        return false;
+    });
+    if (isRedLightQueueBlocked) return;
+
+    // Jarak aman dari garis awal (headway start >= 200px)
+    const queueAtStart = cars.filter(c => c.p === path && c.s < 200).length;
+    if (queueAtStart >= 1) return;
+
+    const point = at(path, 0);
+    if (isFree(path, point.x, point.y)) {
+        cars.push({
+            p: path,
+            s: 0,
+            v: 50,
+            col: color,
+            tag,
+            k: key,
+            id: ++uid,
+            angle: point.a
+        });
+    }
+}
+
+function step(dt) {
+    phaseTime += dt;
+    const pedestrianRequest = videoTrafficState.pedestrianRequested && videoTrafficState.pedestrianVerified;
+
+    // Sesuai Hasil Diskusi: Fase Interupsi (Penyeberang Jalan / Kendaraan Menyeberang Penuh)
+    // 1. Interupsi Pejalan Kaki (Push Button / AI Detection):
+    if (pedestrianRequest && [0, 2].includes(phase)) {
+        if (phaseTime >= 10) phaseTime = Math.max(phaseTime, phases[phase].d);
+    }
+
+    // 2. Interupsi Kendaraan Panorama Menyeberang Penuh (Pin & Pvit):
+    if (phases[phase].id === 'STATE_2' && countPanoramaCrossingVehicles() > 0 && phaseTime >= 12) {
+        phaseTime = Math.max(phaseTime, phases[phase].d);
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `🚨 [AI Interupsi Menyeberang] Terdeteksi antrean di Jl. Panorama (${countPanoramaCrossingVehicles()} kendaraan ingin menyeberang penuh)! Menginterupsi Arus Lurus (Fase 2) -> Membuka Transisi menuju Fase Interupsi (All-Red Kendaraan & Zebra Cross Hijau).`;
+    }
+
+    if (phaseTime >= phases[phase].d) {
+        let nextPhase;
+        const curId = phases[phase].id;
+
+        if (curId === 'STATE_1') {
+            nextPhase = 1;
+        } else if (curId === 'TRANS_1') {
+            nextPhase = 2;
+        } else if (curId === 'STATE_2') {
+            nextPhase = 3;
+        } else if (curId === 'TRANS_2') {
+            if (pedestrianRequest) {
+                nextPhase = 4;
+            } else {
+                const panQueue = countPanoramaCrossingVehicles();
+                if (panQueue === 0) {
+                    const turnQueue = countTurnVehicles();
+                    const skipTarget = turnQueue > 0 ? 0 : 2;
+                    const skipMsg = `⚡ [AI Sensor] Kamera membaca Jl. Panorama TIDAK ADA antrean menyeberang penuh (0 antrean). Fase Interupsi DI-SKIP! AI mengalihkan ke ${skipTarget === 0 ? 'Fase 1 (Belok Kanan & U-Turn)' : 'Fase 2 (Arus Utama Lurus)'}.`;
+                    const logEl = el('ai-reasoning-log');
+                    if (logEl) logEl.innerText = skipMsg;
+                    console.log(skipMsg);
+
+                    const skipEl = el('tele-skip-status');
+                    if (skipEl) {
+                        skipEl.innerText = "Kosong (Skip Interupsi)";
+                        skipEl.style.color = "#f59e0b";
+                    }
+                    nextPhase = skipTarget;
+                } else {
+                    const skipEl = el('tele-skip-status');
+                    if (skipEl) {
+                        skipEl.innerText = "Menyeberang (Fase 3)";
+                        skipEl.style.color = "#10b981";
+                    }
+                    nextPhase = 4;
+                }
+            }
+        } else if (curId === 'STATE_INTERRUPT') {
+            nextPhase = 5;
+        } else if (curId === 'INTERRUPT_FLASH') {
+            nextPhase = 6;
+        } else if (curId === 'INTERRUPT_TRANS') {
+            videoTrafficState.pedestrianRequested = false;
+            videoTrafficState.pedestrianVerified = false;
+            onPedestrianCrossingComplete();
+            const turnQueue = countTurnVehicles();
+            nextPhase = turnQueue > 0 ? 0 : 2;
+        } else {
+            nextPhase = 0;
+        }
+
+        enterPhase(nextPhase);
+    }
+
+    updateSignals();
+    updateHUDPhase();
+    updateTelemetryStats();
+    pedestrianAudio(dt);
+
+    timers.a -= dt; timers.b -= dt; timers.p -= dt; timers.v -= dt;
+
+    if (timers.a <= 0) {
+        timers.a = 7.0 + Math.random() * 4.0;
+        const r = Math.random();
+        if (r < .45) spawn(Math.random() < .5 ? 'Astr' : 'Astr2', '#7d8f78', 'Lurus Lembang');
+        else if (r < .60) spawn('Avit', '#7d8f78', 'Vitasari');
+        else if (r < .85) spawn('Apan', '#f59e0b', 'Jalan A → Belok Kanan Panorama');
+        else spawn('Au', '#b0765a', 'Jalan A → Bandung (via U-Turn Atas)');
+    }
+    if (timers.b <= 0) {
+        timers.b = 7.0 + Math.random() * 4.0;
+        const r = Math.random();
+        if (r < .35) spawn('Bpan', '#38bdf8', 'Belok Panorama');
+        else if (r < .62) spawn('Bu', '#ec4899', 'U-Turn Bawah');
+        else spawn(Math.random() < .5 ? 'Bdn' : 'Bdn2', '#6b7f8a', 'Lurus Bandung');
+    }
+    if (timers.p <= 0) {
+        timers.p = 10.0 + Math.random() * 6.0;
+        spawn('Pupi', '#e879f9', 'Panorama → Gerlong/UPI (Lembang)');
+    }
+    if (timers.v <= 0) {
+        timers.v = 16.0 + Math.random() * 10.0;
+        spawn('VitA', '#34d399', 'Vitasari → Gerlong/UPI (Setiabudi Atas)');
+    }
+
+    stepPedestrians(dt);
+
+    const brake = distance => Math.sqrt(2 * 180 * Math.max(distance, 0));
+    const MIN_STOPPED_GAP = 22; // 22px celah visual aman bersih antar bumper
+    const SAFE_FOLLOW_DIST = LEN + MIN_STOPPED_GAP; // 54px jarak tengah-ke-tengah
+
+    cars.forEach(car => {
+        const point = at(car.p, car.s);
+
+        // 1. Stabilisasi Sudut Kemudi Kendaraan (Steering Damping Filter)
+        if (car.angle === undefined) car.angle = point.a;
+        let diff = point.a - car.angle;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        const turnRate = Math.max(7.0, (car.v / 50) * 11);
+        const maxTurn = turnRate * dt;
+        if (Math.abs(diff) <= maxTurn) {
+            car.angle = point.a;
+        } else {
+            car.angle += Math.sign(diff) * maxTurn;
+        }
+
+        const cosine = Math.cos(car.angle), sine = Math.sin(car.angle);
+        const front = car.s + LEN / 2;
+        let limit = (car.k === 'Pin' || car.k === 'Pupi' || car.k === 'Pvit') ? 60 : 80;
+
+        // 2. Regulasi Kecepatan Menikung Adaptif (Lookahead Cornering Speed Control)
+        const curCurv = getPathCurvature(car.p, car.s);
+        const aheadCurv = getPathCurvature(car.p, car.s + 28);
+        const maxCurv = Math.max(curCurv, aheadCurv);
+        if (maxCurv > 0.0032) {
+            const cornerLimit = Math.max(38, 80 - maxCurv * 2200);
+            limit = Math.min(limit, cornerLimit);
+        }
+
+        // =========================================================================
+        // ATURAN HAK UTAMA & PRIORITAS PERCABANGAN (YIELD & MERGE PRIORITY)
+        // Mencegah kebuntuan (deadlock) dan saling menabrak di titik percabangan
+        // =========================================================================
+
+        // [A] Prioritas Vitasari keluar (VitA) -> Wajib mengalah ke arus Jalan A
+        if (car.k === 'VitA' && car.s >= 180 && car.s <= 250) {
+            const jalanABlocked = cars.some(other => {
+                if (other === car || other.k === 'VitA') return false;
+                const q = at(other.p, other.s);
+                return q.x >= 260 && q.x <= 335 && q.y >= 300 && q.y <= 600;
+            });
+            if (jalanABlocked) {
+                limit = 0;
+                if (car.s >= 235) { car.s = 235; car.v = 0; }
+            }
+        }
+
+        // [B] Prioritas U-Turn Atas (Au, Aup) -> Wajib mengalah ke arus Jalan B
+        // Menahan di s=725 (x≈370, aman di dalam bukaan median, tidak menyenggol lajur Jalan B)
+        if ((car.k === 'Au' || car.k === 'Aup') && car.s >= 670 && car.s <= 740) {
+            const jalanBBlocked = cars.some(other => {
+                if (other === car || other.k === 'Au' || other.k === 'Aup') return false;
+                const q = at(other.p, other.s);
+                return q.x >= 400 && q.x <= 460 && q.y >= 150 && q.y <= 360;
+            });
+            if (jalanBBlocked) {
+                limit = 0;
+                if (car.s >= 725) { car.s = 725; car.v = 0; }
+            }
+        }
+
+        // [B2] Prioritas Aup belok ke Panorama memotong lajur kanan Bdn2 / Bpan (x=446)
+        if (car.k === 'Aup' && car.s >= 910 && car.s <= 980) {
+            const lane2Blocked = cars.some(other => {
+                if (other === car) return false;
+                if (!['Bdn2', 'Bpan'].includes(other.k)) return false;
+                const q = at(other.p, other.s);
+                return q.y >= 400 && q.y <= 500 && Math.abs(q.x - 446) < 15;
+            });
+            if (lane2Blocked) {
+                limit = 0;
+                if (car.s >= 940) { car.s = 940; car.v = 0; }
+            }
+        }
+
+        // [C] Prioritas U-Turn Bawah (Bu) -> Wajib mengalah ke Jalan A saat berbelok masuk
+        // Menahan di s=610 (x≈339, aman di dalam median bukaan bawah, tidak menyenggol Jalan A)
+        if (car.k === 'Bu' && car.s >= 580 && car.s <= 650) {
+            const jalanABlocked = cars.some(other => {
+                if (other === car || other.k === 'Bu') return false;
+                const q = at(other.p, other.s);
+                return q.x >= 260 && q.x <= 335 && q.y >= 430 && q.y <= 620;
+            });
+            if (jalanABlocked) {
+                limit = 0;
+                if (car.s >= 610) { car.s = 610; car.v = 0; }
+            }
+        }
+
+        // [C2] Prioritas U-Turn Bawah (Bu) -> Mengalah ke Belok Kanan A (Apan) yang sedang melintasi simpang
+        if (car.k === 'Bu' && car.s >= 470 && car.s <= 520) {
+            const apanActive = cars.some(other => {
+                if (other.k !== 'Apan') return false;
+                const q = at(other.p, other.s);
+                return q.y >= 470 && q.y <= 620 && q.x >= 310 && q.x <= 460;
+            });
+            if (apanActive) {
+                limit = 0;
+                if (car.s >= 490) { car.s = 490; car.v = 0; }
+            }
+        }
+
+        // [D1] Prioritas Pupi masuk Jalan A (x=314) -> Wajib mengalah ke arus Jalan A
+        if (car.k === 'Pupi' && car.s >= 240 && car.s <= 330) {
+            const jalanABlocked = cars.some(other => {
+                if (other === car || other.k === 'Pupi') return false;
+                const q = at(other.p, other.s);
+                return q.x >= 280 && q.x <= 335 && q.y >= 440 && q.y <= 580;
+            });
+            if (jalanABlocked) {
+                limit = 0;
+                if (car.s >= 275) { car.s = 275; car.v = 0; }
+            }
+        }
+
+        // [D] Prioritas Panorama keluar (Pin, Pupi, Pvit) -> Wajib mengalah jika Jalan B sedang melaju
+        if ((car.k === 'Pin' || car.k === 'Pupi' || car.k === 'Pvit') && car.s >= 160 && car.s <= 240) {
+            const jalanBBlocked = cars.some(other => {
+                if (other === car) return false;
+                if (!['Bdn', 'Bdn2', 'Bpan', 'Au', 'Aup'].includes(other.k)) return false;
+                const q = at(other.p, other.s);
+                return q.y >= 430 && q.y <= 620 && q.x >= 390 && q.x <= 465;
+            });
+            if (jalanBBlocked) {
+                limit = 0;
+                if (car.s >= 200) { car.s = 200; car.v = 0; }
+            }
+        }
+
+        // =========================================================================
+        // KEPATUHAN LAMPU MERAH & GARIS HENTI
+        // =========================================================================
+        car.p.stops.forEach(stop => {
+            if (stop.s < front - 3) return;
+            const distance = stop.s - front;
+            let isStopActive = !signals[stop.sig];
+            // Pengecualian aman: Jika kendaraan Panorama menyeberang (Pin/Pvit) berada di Fase Interupsi
+            // dan zebra cross sudah bersih dari pejalan kaki aktif, beri jalan keluar agar tidak terkunci permanen
+            if ((car.k === 'Pin' || car.k === 'Pvit') && stop.sig === 'P_MAIN') {
+                const curId = phases[phase].id;
+                const activeWalkers = pedestrians.filter(p => p.st === 'walk').length;
+                if ((curId === 'STATE_INTERRUPT' && activeWalkers === 0 && phaseTime >= 6) || curId === 'INTERRUPT_TRANS') {
+                    isStopActive = false;
+                }
+            }
+            if (isStopActive) {
+                limit = Math.min(limit, brake(distance));
+                if (distance <= 0) {
+                    car.s = Math.min(car.s, stop.s - LEN / 2);
+                    car.v = 0;
+                }
+            }
+        });
+
+        // =========================================================================
+        // CAR-FOLLOWING & ANTI-COLLISION ENGINE (BEBAS NUMPUK & BEBAS DEADLOCK)
+        // =========================================================================
+        let clearDistance = 999;
+
+        cars.forEach(other => {
+            if (other === car) return;
+            const q = at(other.p, other.s);
+            const dx = q.x - point.x;
+            const dy = q.y - point.y;
+            const f = dx * cosine + dy * sine;
+            const l = Math.abs(-dx * sine + dy * cosine);
+            const d = Math.hypot(dx, dy);
+
+            const otherAngle = other.angle !== undefined ? other.angle : q.a;
+            let diffA = otherAngle - car.angle;
+            while (diffA < -Math.PI) diffA += 2 * Math.PI;
+            while (diffA > Math.PI) diffA -= 2 * Math.PI;
+            const alignCos = Math.cos(diffA);
+
+            // KASUS 1: Mobil berada di lintasan / lajur yang SAMA PERSIS
+            if (other.p === car.p) {
+                const ds = other.s - car.s;
+                if (ds > 0 && ds < 160) {
+                    const freeGap = ds - SAFE_FOLLOW_DIST;
+                    clearDistance = Math.min(clearDistance, brake(freeGap));
+                    if (ds < SAFE_FOLLOW_DIST) {
+                        car.s = other.s - SAFE_FOLLOW_DIST;
+                        car.v = Math.min(car.v, Math.max(0, other.v));
+                    }
+                }
+                return;
+            }
+
+            // KASUS 2: Mobil di lajur paralel berbeda (Jalan A atau Jalan B)
+            // Jika arah hampir sama (alignCos > 0.65) dan jarak lateral >= 16px:
+            // KEDUA MOBIL BERADA DI LAJUR BERBEDA! TIDAK SALING MENGGANGGU SAMA SEKALI!
+            if (alignCos > 0.65 && l >= 16) {
+                return;
+            }
+
+            // KASUS 2B: Mobil di lajur dua arah berlawanan (misal Jl. Panorama y=488 masuk vs y=530 keluar)
+            // Jika arah berlawanan (alignCos < -0.5) dan jarak lateral >= 18px:
+            // Mobil berpapasan aman di lajur berlawanan tanpa rem!
+            if (alignCos < -0.5 && l >= 18) {
+                return;
+            }
+
+            // KASUS 3: Berada di koridor lajur yang sama (meski beda objek path, misal Bdn & Bpan, atau setelah merge)
+            if (alignCos > 0.65 && l < 16) {
+                if (f > 0 && f < 160) {
+                    const freeGap = f - SAFE_FOLLOW_DIST;
+                    clearDistance = Math.min(clearDistance, brake(freeGap));
+                    if (f < SAFE_FOLLOW_DIST) {
+                        limit = 0;
+                        car.v = 0;
+                        car.s = Math.max(0, car.s - (SAFE_FOLLOW_DIST - f));
+                    }
+                }
+                return;
+            }
+
+            // KASUS 3B: Ada mobil / rintangan tepat di depan moncong kendaraan (f > 0 dan l < 22)
+            // Terlepas dari prioritas jalan, kendaraan TIDAK BOLEH menabrak mobil yang ada di depannya!
+            if (f > 0 && f < 140 && l < 22) {
+                const freeGap = f - SAFE_FOLLOW_DIST;
+                clearDistance = Math.min(clearDistance, brake(freeGap));
+                if (f < SAFE_FOLLOW_DIST) {
+                    limit = 0;
+                    car.v = 0;
+                    car.s = Math.max(0, car.s - (SAFE_FOLLOW_DIST - f));
+                }
+                return;
+            }
+
+            // KASUS 4: Persimpangan / Sudut Berpotongan / Menyeberang
+            if (d < 52) {
+                const isMainJalanB = (c, p) => (['Bdn', 'Bdn2'].includes(c.k) || (c.k === 'Bpan' && p.y <= 440) || (['Au'].includes(c.k) && p.x >= 390 && p.y >= 290) || (c.k === 'Pin' && p.x <= 450 && p.y >= 550));
+                const isMainJalanA = (c, p) => (['Astr', 'Astr2'].includes(c.k) || (['Avit', 'Au'].includes(c.k) && p.y >= 320) || (c.k === 'Bu' && p.x <= 320 && p.y <= 510) || (c.k === 'VitA' && p.x >= 240) || (c.k === 'Apan' && p.y <= 500 && p.x >= 450));
+                const isMainRoad = (c, p) => isMainJalanB(c, p) || isMainJalanA(c, p);
+
+                const carMain = isMainRoad(car, point);
+                const otherMain = isMainRoad(other, q);
+
+                const carIsTurningPocket = ((car.k === 'Au' || car.k === 'Aup') && car.s < 800) ||
+                                          (car.k === 'Bu' && car.s < 680) ||
+                                          (car.k === 'VitA' && car.s < 260);
+                const otherIsTurningPocket = ((other.k === 'Au' || other.k === 'Aup') && other.s < 800) ||
+                                            (other.k === 'Bu' && other.s < 680) ||
+                                            (other.k === 'VitA' && other.s < 260);
+
+                let yieldToOther = false;
+                if (carIsTurningPocket && !otherIsTurningPocket) {
+                    yieldToOther = true;
+                } else if (!carIsTurningPocket && otherIsTurningPocket) {
+                    yieldToOther = false;
+                } else if (!carMain && otherMain) {
+                    yieldToOther = true;
+                } else if (carMain && !otherMain) {
+                    yieldToOther = false;
+                } else {
+                    if (f > 2) {
+                        yieldToOther = true;
+                    } else if (Math.abs(f) <= 2) {
+                        yieldToOther = car.id > other.id;
+                    }
+                }
+
+                if (yieldToOther) {
+                    const safeDist = d - 44;
+                    clearDistance = Math.min(clearDistance, safeDist > 0 ? brake(safeDist) : 0);
+                    if (d < 44) {
+                        limit = 0;
+                        car.v = 0;
+                    }
+                }
+            }
+        });
+
+        limit = Math.min(limit, clearDistance);
+
+        // Integrasi akselerasi & deselerasi yang stabil tanpa jitter
+        if (car.v < limit) {
+            car.v = Math.min(limit, car.v + 130 * dt);
+        } else {
+            const decelRate = clearDistance < 15 ? 350 : 200;
+            car.v = Math.max(limit, car.v - decelRate * dt);
+        }
+        car.s += car.v * dt;
+    });
+
+    cars = cars.filter(car => car.s < car.p.L);
+}
+
+function rr(x, y, w, h, r) {
+    context.beginPath();
+    context.roundRect(x, y, w, h, r);
+}
+
+function drawLamp(x, y, key, label, pedestrian) {
+    context.fillStyle = '#1e293b';
+    context.strokeStyle = '#0f172a';
+    context.lineWidth = 1.2;
+    rr(x - 9, y - 24, 18, 48, 5);
+    context.fill();
+    context.stroke();
+
+    const isGreen = signals[key], isYellow = yellow[key];
+    [
+        ['#ef4444', '#451a1a', !isGreen && !isYellow],
+        ['#f59e0b', '#453210', isYellow],
+        ['#10b981', '#064e3b', isGreen]
+    ].forEach((color, index) => {
+        context.fillStyle = color[2] ? color[0] : color[1];
+        context.beginPath();
+        context.arc(x, y - 14 + index * 14, 5, 0, 7);
+        context.fill();
+        if (color[2]) {
+            context.strokeStyle = color[0];
+            context.lineWidth = 1;
+            context.stroke();
+        }
+    });
+
+    // Indikator Panah Lampu Terpisah (Sesuai Arahan: Lampu Panah Belok vs Lampu Lurus)
+    const gy = y + 14;
+    context.strokeStyle = isGreen ? '#ffffff' : 'rgba(255,255,255,0.25)';
+    context.lineWidth = 1.4;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+
+    if (key === 'B_UTURN' || key === 'TURN' || key === 'L4') {
+        // Panah Putar Balik (U-Turn B)
+        context.beginPath();
+        context.arc(x + 1, gy + 1, 2.5, -Math.PI * 0.4, Math.PI * 0.5);
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x - 2, gy - 2); context.lineTo(x + 1, gy - 2);
+        context.stroke();
+    } else if (key === 'A_TURN') {
+        // Panah Belok Kanan (Jalan A ke Panorama)
+        context.beginPath();
+        context.moveTo(x - 2, gy + 2); context.lineTo(x + 2, gy - 1);
+        context.lineTo(x, gy - 3);
+        context.moveTo(x + 2, gy - 1);
+        context.lineTo(x + 2, gy + 2);
+        context.stroke();
+    } else if (key === 'P_LEFT') {
+        // Panah Belok Kiri (Panorama ke UPI/Lembang)
+        context.beginPath();
+        context.moveTo(x + 2, gy + 2); context.lineTo(x - 2, gy - 1);
+        context.lineTo(x, gy - 3);
+        context.moveTo(x - 2, gy - 1);
+        context.lineTo(x - 2, gy + 2);
+        context.stroke();
+    } else if (key === 'A') {
+        // Panah Lurus Ke Atas (Arah Lembang)
+        context.beginPath();
+        context.moveTo(x, gy + 3); context.lineTo(x, gy - 3);
+        context.lineTo(x - 2, gy - 1);
+        context.moveTo(x, gy - 3); context.lineTo(x + 2, gy - 1);
+        context.stroke();
+    } else if (key === 'B') {
+        // Panah Lurus Ke Bawah (Arah Bandung)
+        context.beginPath();
+        context.moveTo(x, gy - 3); context.lineTo(x, gy + 3);
+        context.lineTo(x - 2, gy + 1);
+        context.moveTo(x, gy + 3); context.lineTo(x + 2, gy + 1);
+        context.stroke();
+    } else if (key === 'P_MAIN' || key === 'P') {
+        // Simbol Menyeberang Penuh / Utama Panorama
+        context.beginPath();
+        context.moveTo(x - 3, gy); context.lineTo(x + 3, gy);
+        context.moveTo(x, gy - 2); context.lineTo(x, gy + 2);
+        context.stroke();
+    }
+
+    // Badge Label Bersih & Elegan (Pill Badge Tanpa Saling Bertumpukan)
+    if (label) {
+        context.font = 'bold 9px var(--font)';
+        const tw = context.measureText(label).width;
+        const by = y + 33;
+        context.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        rr(x - tw / 2 - 5, by - 8, tw + 10, 15, 4);
+        context.fill();
+        context.strokeStyle = isGreen ? 'rgba(16, 185, 129, 0.5)' : (isYellow ? 'rgba(245, 158, 11, 0.5)' : 'rgba(255, 255, 255, 0.15)');
+        context.lineWidth = 0.8;
+        context.stroke();
+
+        context.fillStyle = isGreen ? '#34d399' : (isYellow ? '#fbbf24' : '#e2e8f0');
+        context.textAlign = 'center';
+        context.fillText(label, x, by + 3);
+    }
+}
+
+function drawPedestrianLamp(x, y) {
+    const current = phases[phase];
+    const isGreen = current.ped === 'solid' || (current.ped === 'flash' && Math.floor(phaseTime * 4) % 2 === 0);
+    context.fillStyle = '#2f3634';
+    rr(x - 9, y - 17, 18, 34, 4);
+    context.fill();
+    context.fillStyle = current.ped ? '#4a2a28' : '#e0463c';
+    context.beginPath();
+    context.arc(x, y - 7, 5, 0, 7);
+    context.fill();
+    context.fillStyle = isGreen ? '#4cc36a' : '#25402c';
+    context.beginPath();
+    context.arc(x, y + 7, 5, 0, 7);
+    context.fill();
+}
+
+function draw() {
+    context.fillStyle = '#f4f1e6';
+    context.fillRect(0, 0, 720, 900);
+    context.fillStyle = '#d6d0b8';
+    context.fillRect(232, 0, 256, 900);
+    context.fillStyle = '#464f4f';
+    context.fillRect(250, 0, 220, 900);
+    context.fillRect(40, 385, 215, 80);
+    context.fillRect(465, 465, 255, 90);
+    context.fillStyle = '#464f4f';
+    context.fillRect(246, 387, 8, 76);
+    context.fillRect(466, 467, 8, 86);
+
+    // Bangunan sekitar simpang
+    [[50, 490, 'Vitasari Bakery', '#96735f'], [50, 642, 'Tiramisu Sulu', '#7d8f78']].forEach(building => {
+        context.fillStyle = '#eee6d2';
+        context.strokeStyle = '#4b544f';
+        context.lineWidth = 2;
+        rr(building[0], building[1], 120, 110, 6);
+        context.fill();
+        context.stroke();
+        context.fillStyle = building[3];
+        context.fillRect(building[0] + 6, building[1] + 6, 108, 20);
+        context.fillStyle = '#2c332f';
+        context.font = 'bold 11px var(--font)';
+        context.textAlign = 'center';
+        context.fillText(building[2], building[0] + 60, building[1] + 70);
+    });
+
+    // Pepohonan
+    [[520, 200], [640, 300], [580, 590], [620, 720], [560, 830]].forEach(tree => {
+        context.fillStyle = '#7d8f78';
+        context.beginPath();
+        context.arc(tree[0], tree[1], 14, 0, 7);
+        context.fill();
+    });
+
+    // Median jalan Setiabudi
+    context.fillStyle = '#c3c3b0';
+    rr(350, 295, 20, 170, 8);
+    context.fill();
+    for (const y of [307, 337, 367, 397, 453]) {
+        context.fillStyle = '#7d8f78';
+        context.beginPath();
+        context.arc(360, y, 6, 0, 7);
+        context.fill();
+    }
+
+    // Garis marka jalan
+    context.strokeStyle = '#efe9d3';
+    context.lineWidth = 2;
+    context.setLineDash([12, 12]);
+    context.beginPath();
+    context.moveTo(360, 650);
+    context.lineTo(360, 900);
+    context.moveTo(90, 425);
+    context.lineTo(240, 425);
+    context.moveTo(480, 510);
+    context.lineTo(700, 510);
+    context.stroke();
+    context.setLineDash([]);
+
+    // Zebra cross Jalan A
+    context.fillStyle = '#efe9d3';
+    for (let x = 254; x < 466; x += 22) context.fillRect(x, 600, 12, 40);
+    context.fillRect(252, 652, 96, 4);
+    context.fillRect(372, 590, 96, 4);
+    context.fillRect(372, 470, 96, 4); // Garis henti batas U-Turn Jalan B
+    context.fillRect(560, 506, 4, 46); // Garis stop Jl. Panorama (Sinyal P)
+    // VitA (Vitasari → Gerlong): bebas belok kiri tanpa lampu merah — tidak ada garis henti
+
+    // Marka batas lengkung U-Turn Bawah (Presisi & Halus Sesuai Lajur)
+    context.save();
+    context.strokeStyle = 'rgba(239, 233, 211, 0.40)';
+    context.lineWidth = 1.5;
+    context.setLineDash([5, 5]);
+    context.beginPath();
+    context.ellipse(339, 470, 53, 56, 0, 0, Math.PI);
+    context.stroke();
+    context.restore();
+
+    // Marka batas lengkung U-Turn Atas (Akses Putar Balik ke Panorama / Bandung)
+    context.save();
+    context.strokeStyle = 'rgba(239, 233, 211, 0.40)';
+    context.lineWidth = 1.5;
+    context.setLineDash([5, 5]);
+    context.beginPath();
+    context.arc(366, 295, 52, Math.PI, 0);
+    context.stroke();
+    context.fillStyle = 'rgba(239, 233, 211, 0.50)';
+    context.font = 'bold 8.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('⤴ Bukaan U-Turn Atas (ke Panorama)', 366, 226);
+    context.restore();
+
+    // Marka pandu Vitasari keluar belok kiri ke Gerlong (Setiabudi Atas)
+    context.save();
+    context.strokeStyle = 'rgba(52, 211, 153, 0.40)';
+    context.lineWidth = 1.5;
+    context.setLineDash([5, 5]);
+    context.beginPath();
+    context.moveTo(210, 412);
+    context.bezierCurveTo(270, 412, AX_R, 370, AX_R, 320);
+    context.stroke();
+    context.fillStyle = 'rgba(52, 211, 153, 0.85)';
+    context.font = 'bold 8.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('↖ Vitasari → Gerlong', 165, 408);
+    context.restore();
+
+    // Marka pandu belok kanan langsung Jalan A -> Jl. Panorama (Fase 1)
+    context.save();
+    context.strokeStyle = 'rgba(244, 114, 182, 0.40)';
+    context.lineWidth = 1.5;
+    context.setLineDash([4, 6]);
+    context.beginPath();
+    context.moveTo(AX_R, 620);
+    context.bezierCurveTo(AX_R, 540, 420, 488, 500, 488);
+    context.stroke();
+    context.restore();
+
+    // Marka Panduan Lajur Jalan A (Lajur Kiri: Lurus, Lajur Kanan: Belok Kanan Panorama)
+    context.save();
+    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    context.strokeStyle = 'rgba(244, 114, 182, 0.5)';
+    context.lineWidth = 1;
+    rr(250, 666, 110, 18, 4);
+    context.fill();
+    context.stroke();
+    context.fillStyle = '#fbcfe8';
+    context.font = 'bold 8px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('↱ Kanan (F1) | ↑ Lurus (F2)', 305, 679);
+    context.restore();
+
+    // Marka koridor penyeberangan aman Jl. Panorama (di bawah batas U-Turn)
+    context.save();
+    context.strokeStyle = 'rgba(168, 85, 247, 0.35)';
+    context.lineWidth = 1.5;
+    context.setLineDash([4, 6]);
+    context.beginPath();
+    context.moveTo(470, 520); context.lineTo(300, 520);
+    context.stroke();
+    context.restore();
+
+    // Pulau pelindung pejalan kaki (Refuge island)
+    [196, 490].forEach(x => {
+        context.fillStyle = '#8fa48a';
+        context.strokeStyle = '#4b544f';
+        context.lineWidth = 2;
+        rr(x, 600, 34, 40, 6);
+        context.fill();
+        context.stroke();
+        context.fillStyle = '#c3c3b0';
+        [608, 632].forEach(y => {
+            context.beginPath();
+            context.arc(x + (x < 300 ? 6 : 28), y, 3, 0, 7);
+            context.fill();
+        });
+    });
+
+    // Marka Arah Lajur Jalan Setiabudi (Subtle Pavement Direction Arrows)
+    context.save();
+    context.fillStyle = 'rgba(239, 233, 211, 0.40)';
+    context.font = 'bold 11px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('↑ Lembang', AX, 745);
+    context.fillText('↓ Bandung', BX, 745);
+    context.restore();
+
+    // Badge Informasi Jalan Setiabudi (Di Bawah Canvas - Rapi & Tidak Tertabrak Mobil)
+    context.save();
+    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    rr(245, 862, 230, 24, 6);
+    context.fill();
+    context.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    context.lineWidth = 1;
+    context.stroke();
+    context.fillStyle = '#cbd5e1';
+    context.font = 'bold 9.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('Jalan Setiabudi (2 Lajur • Praktik 3 Lajur)', 360, 878);
+    context.restore();
+
+    // Badge Arah Atas: Gerlong / UPI (Di Atas Canvas - Rapi)
+    context.save();
+    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    rr(270, 16, 180, 22, 6);
+    context.fill();
+    context.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    context.lineWidth = 1;
+    context.stroke();
+    context.fillStyle = '#cbd5e1';
+    context.font = 'bold 9.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('↑ Gerlong / UPI Setiabudi', 360, 31);
+    context.restore();
+
+    // Badge Nama Jalan Jl. Panorama (Di Tepi Atas Bahu Jalan, Bebas Tabrakan Lampu)
+    context.save();
+    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    rr(590, 370, 115, 22, 5);
+    context.fill();
+    context.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    context.lineWidth = 1;
+    context.stroke();
+    context.fillStyle = '#cbd5e1';
+    context.font = 'bold 9.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('🛣️ Jl. Panorama →', 647, 385);
+    context.restore();
+
+    // Badge Arah Vitasari (Di Sisi Kiri)
+    context.save();
+    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    rr(50, 362, 115, 22, 5);
+    context.fill();
+    context.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    context.lineWidth = 1;
+    context.stroke();
+    context.fillStyle = '#a7f3d0';
+    context.font = 'bold 9.5px var(--font)';
+    context.textAlign = 'center';
+    context.fillText('🥐 Vitasari Bakery ←', 107, 377);
+    context.restore();
+
+    // Gambar Mobil
+    cars.forEach(car => {
+        const point = at(car.p, car.s);
+        const heading = car.angle !== undefined ? car.angle : point.a;
+        context.save();
+        context.translate(point.x, point.y);
+        context.rotate(heading);
+        context.fillStyle = '#22282a';
+        rr(-LEN / 2 - 1, -WID / 2 - 1, LEN + 2, WID + 2, 5);
+        context.fill();
+        context.fillStyle = car.col;
+        rr(-LEN / 2, -WID / 2, LEN, WID, 4);
+        context.fill();
+        context.fillStyle = '#e8e4d2';
+        rr(-6, -6, 14, 12, 2);
+        context.fill();
+        context.restore();
+    });
+
+    // Pejalan Kaki
+    pedestrians.forEach(person => {
+        context.fillStyle = '#e6d9b0';
+        context.strokeStyle = '#333';
+        context.lineWidth = 1;
+        context.beginPath();
+        context.arc(person.x, person.y, 4, 0, 7);
+        context.fill();
+        context.stroke();
+    });
+
+    // Efek Malam
+    if (night) {
+        context.drawImage(nightCanvas, 0, 0);
+        context.save();
+        context.translate(360, 620);
+        context.scale(1, .36);
+        const lightGrad = context.createRadialGradient(0, 0, 10, 0, 0, 150);
+        lightGrad.addColorStop(0, 'rgba(255,238,180,.30)');
+        lightGrad.addColorStop(1, 'rgba(255,238,180,0)');
+        context.fillStyle = lightGrad;
+        context.beginPath();
+        context.arc(0, 0, 150, 0, 7);
+        context.fill();
+        context.restore();
+    }
+
+    // Titik tiang lampu jalan
+    [[238, 590], [482, 590]].forEach(point => {
+        context.fillStyle = night ? '#ffe9a8' : '#8b8f8a';
+        context.strokeStyle = '#2c332f';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.arc(point[0], point[1], 5, 0, 7);
+        context.fill();
+        context.stroke();
+    });
+
+    // Lampu Lalu Lintas Simpang Panorama Sesuai Rincian Fase Hasil Diskusi (Layout Lega & Bebas Tumpang Tindih)
+    drawLamp(270, 625, 'A', 'Lurus A');
+    drawLamp(330, 625, 'A_TURN', 'Kanan A');
+    drawLamp(360, 435, 'B_UTURN', 'U-Turn');
+    drawLamp(445, 430, 'B', 'Lurus B');
+    drawLamp(535, 415, 'P_MAIN', 'Menyeberang');
+    drawLamp(615, 415, 'P_LEFT', 'Belok Kiri');
+    drawPedestrianLamp(232, 620);
+    drawPedestrianLamp(488, 620);
+}
+
+let lastSimFrame = performance.now();
+function simLoop(now) {
+    const dt = Math.min(.05, (now - lastSimFrame) / 1000);
+    lastSimFrame = now;
+    for (let i = 0; i < simSpeed; i++) step(dt);
+    draw();
+    requestAnimationFrame(simLoop);
+}
+
+// Event Listeners Kontrol Simulasi
+document.querySelectorAll('.btn-group button[data-speed]').forEach(btn => {
+    btn.onclick = () => {
+        simSpeed = +btn.dataset.speed;
+        document.querySelectorAll('.btn-group button[data-speed]').forEach(b => b.classList.toggle('active', b === btn));
+    };
+});
+
+const btnNight = document.getElementById('btn-night');
+btnNight.onclick = () => {
+    night = !night;
+    btnNight.textContent = night ? '☀️ Siang' : '🌙 Malam';
+    btnNight.classList.toggle('active', night);
+};
+
+const btnSound = document.getElementById('btn-sound');
+btnSound.onclick = () => {
+    soundEnabled = !soundEnabled;
+    btnSound.textContent = soundEnabled ? '🔊 Suara: Nyala' : '🔇 Suara: Mati';
+    btnSound.classList.toggle('active', soundEnabled);
+};
+
+// Fungsi Uji Coba Cepat State Machine AI
+function testSpawnTurn() {
+    if (!cars.some(c => c.k === 'Bu')) {
+        spawn('Bu', '#ec4899', 'U-Turn Bawah');
+    } else {
+        spawn('Aup', '#f59e0b', 'Jalan A → Panorama (via U-Turn Atas)');
+    }
+    simulatedQueues.turn = (simulatedQueues.turn || 0) + 1;
+    const logEl = el('ai-reasoning-log');
+    if (logEl) logEl.innerText = "Simulasi: Kendaraan U-Turn ditambahkan!";
+    updateTelemetryStats();
+}
+
+function testSpawnVitasari() {
+    spawn('VitA', '#34d399', 'Vitasari → Gerlong/UPI (Setiabudi Atas)');
+    const logEl = el('ai-reasoning-log');
+    if (logEl) logEl.innerText = "Simulasi: Kendaraan dari Vitasari melaju ke arah Gerlong / Setiabudi Atas!";
+    updateTelemetryStats();
+}
+
+function testTriggerPedestrianPhase() {
+    videoTrafficState.pedestrianRequested = true;
+    videoTrafficState.pedestrianVerified = true;
+    if (phases[phase].id === 'STATE_2' || phases[phase].id === 'STATE_3') {
+        phaseTime = Math.max(phaseTime, phases[phase].d - 1);
+    }
+    const logEl = el('ai-reasoning-log');
+    if (logEl) logEl.innerText = "Simulasi: Permintaan menyeberang zebra cross aktif! AI mengalihkan ke Fase 1 (U-Turn Bawah & Penyeberang Jalan Hijau, Panorama & Jalan A Merah).";
+    updateDecisionDisplay("FASE PENYEBERANGAN PEJALAN KAKI AKTIF (FASE 1)", "safe", 0.95);
+}
+
+function testSpawnPanoramaDest(dest) {
+    const destMap = {
+        Pin: { k: 'Pin', col: '#a855f7', name: 'Panorama → Jalan B (Bandung)' },
+        Pvit: { k: 'Pvit', col: '#c084fc', name: 'Panorama → Vitasari (Menyeberang)' },
+        Pupi: { k: 'Pupi', col: '#e879f9', name: 'Panorama → Gerlong/UPI (Lembang)' }
+    };
+    const item = destMap[dest] || destMap.Pin;
+    spawn(item.k, item.col, item.name);
+    simulatedQueues.panorama = (simulatedQueues.panorama || 0) + 1;
+    
+    // Aktuasi Fase Interupsi AI Seketika jika kendaraan perlu menyeberang penuh (Pin & Pvit):
+    if (dest === 'Pin' || dest === 'Pvit') {
+        if (phases[phase].id === 'STATE_2') {
+            if (phaseTime >= 8) {
+                phaseTime = Math.max(phaseTime, phases[phase].d);
+            } else {
+                phaseTime = Math.max(phaseTime, phases[phase].d - 2);
+            }
+        }
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `⚡ [AI Actuated Interupsi] Kendaraan tujuan ${item.name} antre di Jl. Panorama! AI memicu percepatan transisi menuju Fase Interupsi Menyeberang Penuh.`;
+    } else {
+        const logEl = el('ai-reasoning-log');
+        if (logEl) logEl.innerText = `🚗 Kendaraan tujuan ${item.name} mengantre di Jl. Panorama. Arus belok kiri menyatu searah Jalan A ke Lembang (Fase 1 & 2).`;
+    }
+    updateTelemetryStats();
+}
+
+function testSpawnPanorama() {
+    const keys = ['Pin', 'Pvit', 'Pupi'];
+    testSpawnPanoramaDest(keys[Math.floor(Math.random() * keys.length)]);
+}
+
+function testClearPanorama() {
+    cars = cars.filter(c => c.k !== 'Pin' && c.k !== 'Pvit' && c.k !== 'Pupi');
+    simulatedQueues.panorama = 0;
+    videoTrafficState.panoramaDensityPer100m = 0;
+    const logEl = el('ai-reasoning-log');
+    if (logEl) logEl.innerText = "Simulasi: Jl. Panorama dikosongkan! Fase Interupsi akan di-skip saat dievaluasi AI.";
+    const skipEl = el('tele-skip-status');
+    if (skipEl) {
+        skipEl.innerText = "Kosong (Skip Interupsi)";
+        skipEl.style.color = "#f59e0b";
+    }
+}
+
+const btnResetSim = document.getElementById('btn-reset-sim');
+btnResetSim.onclick = () => {
+    cars = [];
+    pedestrians = [];
+    simulatedQueues.turn = 0;
+    simulatedQueues.panorama = 0;
+    enterPhase(0);
+    pedestrianTimer = 0;
+    lastBeep = null;
+    timers = { a: 0, b: 1, p: 2, w: 0 };
+    updateSignals();
+    updateTelemetryStats();
+};
+
+document.addEventListener('pointerdown', () => {
+    if (!audioContext) {
+        try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+});
+
+// API Publik Panorama Simulation
+window.PanoramaSim = {
+    state: () => ({
+        phase,
+        phaseName: phases[phase].n,
+        time: phaseTime,
+        duration: phases[phase].d,
+        signals: { ...signals },
+        pedGreen: Boolean(phases[phase].ped),
+        night,
+        vehicles: cars.length
+    }),
+    setVideoTraffic: state => Object.assign(videoTrafficState, state),
+    requestPedestrianCrossing: (requested, verified) => {
+        videoTrafficState.pedestrianRequested = Boolean(requested);
+        videoTrafficState.pedestrianVerified = Boolean(verified);
+        if (requested) {
+            updateDecisionDisplay("MENGALIKAN SINYAL KE FASE PEJALAN KAKI", "safe", 0.95);
+        }
+    },
+    reset: () => btnResetSim.click()
+};
+
+updateSignals();
+requestAnimationFrame(simLoop);
+
+
+/* =========================================================================
+   BAGIAN 2: DETEKSI VIDEO CCTV & AI GAP-ACCEPTANCE ENGINE
+   ========================================================================= */
+const video = el('video-input');
+const overlay = el('overlay-canvas');
+const octx = overlay.getContext('2d');
+
+const proc = document.createElement('canvas');
+const pctx = proc.getContext('2d', { willReadFrequently: true });
+const PROC_W = 160;
+let PROC_H = 90, DISPLAY_W = 480, DISPLAY_H = 270;
+
+let stopLineX = null;
+let markingMode = false;
+let markingRefugeZone = false;
+let refugeDragStart = null;
+let refugePreview = null;
+let refugeZone = null;
+let refugeCount = null;
+let refugePersonDetections = [];
+let prevGray = null;
+let trackedBlobs = [];
+let blobIdCounter = 0;
+let lastAnalysisTime = 0;
+const ANALYSIS_INTERVAL_MS = 150;
+let currentVehicles = [];
+
+let vehicleModel = null;
+let modelBusy = false;
+let lastModelRun = 0;
+let modelVehicleTracks = [];
+let vehicleTrackId = 0;
+const MODEL_INTERVAL_MS = 500;
+const VEHICLE_CONFIG = {
+    car: { label: 'Mobil', icon: '🚗', color: '#38bdf8', minScore: 0.30, category: 'car' },
+    motorcycle: { label: 'Motor', icon: '🏍️', color: '#fb923c', minScore: 0.25, category: 'motorcycle' },
+    bicycle: { label: 'Sepeda', icon: '🚲', color: '#fb923c', minScore: 0.25, category: 'motorcycle' },
+    truck: { label: 'Truk', icon: '🚚', color: '#c084fc', minScore: 0.28, category: 'truck' },
+    bus: { label: 'Bus', icon: '🚌', color: '#e879f9', minScore: 0.28, category: 'truck' }
+};
+const VEHICLE_CLASSES = new Set(Object.keys(VEHICLE_CONFIG));
+
+let activeDetections = [];
+let activePersonDetections = [];
+
+let aiState = "IDLE"; // IDLE, CHECKING, PED_CROSSING
+let checkTimer = null;
+let checkElapsed = 0;
+
+// Inisialisasi Model COCO-SSD
+async function initCOCOSSD() {
+    try {
+        if (window.cocoSsd) {
+            vehicleModel = await cocoSsd.load();
+            el('ai-model-badge').innerText = 'TensorFlow COCO-SSD Aktif';
+            el('ai-model-badge').style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            el('ai-model-badge').style.color = '#34d399';
+        }
+    } catch (e) {
+        console.warn('COCO-SSD model fallback ke motion detection:', e);
+        el('ai-model-badge').innerText = 'Motion Detector (Fallback)';
+    }
+}
+initCOCOSSD();
+
+// Load Video Default
+video.src = 'assets/traffic-video-web.mp4';
+video.load();
+
+video.addEventListener('loadedmetadata', () => {
+    overlay.width = video.videoWidth || 640;
+    overlay.height = video.videoHeight || 360;
+    DISPLAY_W = overlay.width;
+    DISPLAY_H = overlay.height;
+    PROC_H = Math.round(PROC_W * DISPLAY_H / DISPLAY_W);
+    proc.width = PROC_W;
+    proc.height = PROC_H;
+    if (stopLineX === null) stopLineX = Math.round(DISPLAY_W * 0.45);
+    el('ai-reasoning-log').innerText = `Video siap diputar (${overlay.width}x${overlay.height}). Deteksi multi-kelas (Mobil, Motor, Truk) aktif.`;
+    
+    // Coba putar otomatis video
+    video.play().then(() => {
+        el('play-icon').innerText = '⏸️';
+        el('play-text').innerText = 'Jeda';
+    }).catch(err => {
+        console.log('Autoplay ditahan browser, klik Putar Video untuk memulai:', err);
+    });
+});
+
+video.addEventListener('error', () => {
+    el('ai-reasoning-log').innerText = 'Video gagal dimuat. Pastikan file ada di folder assets/ atau gunakan opsi Upload File.';
+});
+
+function changeVideoPreset(val) {
+    if (val === 'upload') {
+        el('file-input').click();
+    } else {
+        video.src = val;
+        video.load();
+        trackedBlobs = [];
+        activeDetections = [];
+        activePersonDetections = [];
+        modelVehicleTracks = [];
+        video.play().then(() => {
+            el('play-icon').innerText = '⏸️';
+            el('play-text').innerText = 'Jeda';
+        }).catch(() => {});
+    }
+}
+
+el('file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    video.src = URL.createObjectURL(file);
+    video.load();
+    trackedBlobs = [];
+    activeDetections = [];
+    activePersonDetections = [];
+    modelVehicleTracks = [];
+    video.play().then(() => {
+        el('play-icon').innerText = '⏸️';
+        el('play-text').innerText = 'Jeda';
+    }).catch(() => {});
+});
+
+function togglePlay() {
+    if (video.paused) {
+        video.play();
+        el('play-icon').innerText = '⏸️';
+        el('play-text').innerText = 'Jeda';
+    } else {
+        video.pause();
+        el('play-icon').innerText = '▶️';
+        el('play-text').innerText = 'Putar Video';
+    }
+}
+
+function restartVideo() {
+    video.currentTime = 0;
+    video.play();
+    el('play-icon').innerText = '⏸️';
+    el('play-text').innerText = 'Jeda';
+}
+
+function toggleMarkStopLine() {
+    markingMode = !markingMode;
+    markingRefugeZone = false;
+    el('btn-mark-stopline').classList.toggle('active', markingMode);
+    el('btn-mark-refuge').classList.remove('active');
+    el('ai-reasoning-log').innerText = markingMode ? 'Klik pada layar video untuk menentukan posisi Garis Henti (Stop Line).' : 'Mode penandaan garis henti ditutup.';
+}
+
+function toggleMarkRefugeZone() {
+    markingRefugeZone = !markingRefugeZone;
+    markingMode = false;
+    el('btn-mark-refuge').classList.toggle('active', markingRefugeZone);
+    el('btn-mark-stopline').classList.remove('active');
+    el('ai-reasoning-log').innerText = markingRefugeZone ? 'Tarik kotak (drag) pada layar video untuk menandai Zona Tunggu Pejalan Kaki (Refuge Zone).' : 'Mode penandaan zona refuge ditutup.';
+}
+
+function toggleDetectorMode() {
+    const btn = el('btn-toggle-detector');
+    if (vehicleModel) {
+        // toggle off to motion
+        btn.dataset.forceMotion = btn.dataset.forceMotion === 'true' ? 'false' : 'true';
+        btn.innerText = btn.dataset.forceMotion === 'true' ? '⚡ Mode Detektor: Motion (Ringan)' : '⚡ Mode Detektor: COCO-SSD (Deep Learning)';
+    } else {
+        btn.innerText = '⚡ Mode Detektor: Motion (Aktif)';
+    }
+}
+
+// Mouse events on overlay canvas for marking stopline / refuge
+overlay.addEventListener('click', e => {
+    if (markingMode) {
+        const rect = overlay.getBoundingClientRect();
+        stopLineX = (e.clientX - rect.left) * overlay.width / rect.width;
+        markingMode = false;
+        el('btn-mark-stopline').classList.remove('active');
+        el('ai-reasoning-log').innerText = `Garis Henti tersimpan di X=${Math.round(stopLineX)}px. Estimasi jarak kini dihitung dari garis ini.`;
+    }
+});
+
+overlay.addEventListener('mousedown', e => {
+    if (!markingRefugeZone) return;
+    const rect = overlay.getBoundingClientRect();
+    refugeDragStart = {
+        x: (e.clientX - rect.left) * overlay.width / rect.width,
+        y: (e.clientY - rect.top) * overlay.height / rect.height
+    };
+});
+
+overlay.addEventListener('mousemove', e => {
+    if (!markingRefugeZone || !refugeDragStart) return;
+    const rect = overlay.getBoundingClientRect();
+    const currX = (e.clientX - rect.left) * overlay.width / rect.width;
+    const currY = (e.clientY - rect.top) * overlay.height / rect.height;
+    refugePreview = {
+        x: Math.min(refugeDragStart.x, currX),
+        y: Math.min(refugeDragStart.y, currY),
+        w: Math.abs(currX - refugeDragStart.x),
+        h: Math.abs(currY - refugeDragStart.y)
+    };
+});
+
+overlay.addEventListener('mouseup', () => {
+    if (markingRefugeZone && refugePreview) {
+        refugeZone = { ...refugePreview };
+        refugePreview = null;
+        refugeDragStart = null;
+        markingRefugeZone = false;
+        el('btn-mark-refuge').classList.remove('active');
+        el('ai-reasoning-log').innerText = `Zona Refuge tersimpan (${Math.round(refugeZone.w)}x${Math.round(refugeZone.h)}px). Detektor akan memantau orang di area ini.`;
+    }
+});
+
+// Tab Switcher Kamera
+let currentCameraTab = 'A';
+function switchCameraTab(cam) {
+    currentCameraTab = cam;
+    document.querySelectorAll('.cam-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.cam === cam);
+    });
+    if (cam === 'AERIAL') {
+        el('ai-reasoning-log').innerText = '🚁 Mode Kamera 4 (Aerial Top-Down): Mengawasi 4 sisi persimpangan secara konsisten (Solusi Rekomendasi Dosen). Antrean & pergerakan terhubung satu kesatuan.';
+        const badge = el('ai-model-badge');
+        if (badge) badge.innerText = 'Aerial 4-Way Tracking (Konsisten)';
+    } else {
+        el('ai-reasoning-log').innerText = `Menampilkan Kamera ${cam === 'A' ? '1 (Jalan A - Zebra Cross)' : cam === 'P' ? '2 (Jl. Panorama - 3 Arah Keluar)' : '3 (Jalan B - Setiabudi Arah Bawah)'}.`;
+        const badge = el('ai-model-badge');
+        if (badge) badge.innerText = 'TensorFlow COCO-SSD / Motion';
+    }
+}
+
+// Siklus Analisis Frame Video & Render Overlay
+function processVideoFrame() {
+    if (!video.paused && !video.ended && video.videoWidth > 0) {
+        const now = performance.now();
+        const forceMotion = el('btn-toggle-detector').dataset.forceMotion === 'true';
+
+        // Jadwalkan inferensi detektor AI
+        if (now - lastAnalysisTime >= ANALYSIS_INTERVAL_MS) {
+            lastAnalysisTime = now;
+            if (vehicleModel && !forceMotion) {
+                runCOCOSSD(now);
+            } else {
+                runMotionDetection(now);
+            }
+        }
+
+        // Render visual overlay canvas setiap frame (60 FPS tanpa kedip)
+        drawDetectionsOverlay(activeDetections, activePersonDetections);
+    }
+    requestAnimationFrame(processVideoFrame);
+}
+requestAnimationFrame(processVideoFrame);
+
+// Gambar Overlay Canvas: Bounding Box Multi-Kelas, Stopline, Refuge, dan HUD
+function drawDetectionsOverlay(detections, personDets = []) {
+    octx.clearRect(0, 0, overlay.width, overlay.height);
+
+    // 1. Batas Horizon Jalan
+    const roadTopPct = Number(el('in-roadtop').value);
+    const horizonY = Math.round(overlay.height * (roadTopPct / 100));
+    octx.save();
+    octx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    octx.lineWidth = 1;
+    octx.setLineDash([4, 6]);
+    octx.beginPath();
+    octx.moveTo(0, horizonY);
+    octx.lineTo(overlay.width, horizonY);
+    octx.stroke();
+    octx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    octx.font = '9px var(--font-mono)';
+    octx.fillText('BATAS HORIZON JALAN', 8, horizonY - 4);
+    octx.restore();
+
+    // 2. Garis Henti (Stopline)
+    if (stopLineX !== null) {
+        octx.save();
+        octx.strokeStyle = '#ef4444';
+        octx.lineWidth = 3;
+        octx.setLineDash([8, 6]);
+        octx.beginPath();
+        octx.moveTo(stopLineX, 0);
+        octx.lineTo(stopLineX, overlay.height);
+        octx.stroke();
+        octx.fillStyle = '#ef4444';
+        octx.font = 'bold 11px var(--font)';
+        octx.fillText('GARIS HENTI (STOP LINE)', stopLineX + 8, 22);
+        octx.restore();
+    }
+
+    // 3. Zona Refuge Pejalan Kaki
+    const zone = refugePreview || refugeZone;
+    if (zone) {
+        octx.save();
+        octx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+        octx.strokeStyle = '#10b981';
+        octx.lineWidth = 2;
+        octx.setLineDash([6, 4]);
+        octx.fillRect(zone.x, zone.y, zone.w, zone.h);
+        octx.strokeRect(zone.x, zone.y, zone.w, zone.h);
+        octx.fillStyle = '#10b981';
+        octx.font = 'bold 11px var(--font)';
+        octx.fillText('ZONA REFUGE PEJALAN', zone.x + 4, Math.max(14, zone.y - 6));
+        octx.restore();
+    }
+
+    // 4. Pejalan Kaki
+    personDets.forEach(p => {
+        octx.save();
+        octx.strokeStyle = '#34d399';
+        octx.lineWidth = 2;
+        octx.strokeRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+        octx.fillStyle = 'rgba(52, 211, 153, 0.2)';
+        octx.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+        octx.fillStyle = '#10b981';
+        octx.font = 'bold 10px var(--font-mono)';
+        octx.fillText(`🚶 Pejalan ${Math.round(p.score * 100)}%`, p.x - p.w / 2, Math.max(12, p.y - p.h / 2 - 4));
+        octx.restore();
+    });
+
+    // 5. Bounding Box Kendaraan Berwarna Sesuai Jenis
+    const calM = Math.max(5, Number(el('in-cal').value) || 20);
+    const pxPerMeter = overlay.width / calM;
+
+    detections.forEach(d => {
+        const color = d.color || '#38bdf8';
+        const icon = d.icon || '🚘';
+        const label = d.label || 'Kendaraan';
+        const scorePct = Math.round((d.score || 0.8) * 100);
+
+        octx.save();
+        octx.strokeStyle = color;
+        octx.lineWidth = 2.2;
+        octx.strokeRect(d.x - d.w / 2, d.y - d.h / 2, d.w, d.h);
+
+        // Fill translusen sesuai kelas
+        if (d.category === 'motorcycle') octx.fillStyle = 'rgba(251, 146, 60, 0.18)';
+        else if (d.category === 'truck') octx.fillStyle = 'rgba(192, 132, 252, 0.18)';
+        else octx.fillStyle = 'rgba(56, 189, 248, 0.18)';
+        octx.fillRect(d.x - d.w / 2, d.y - d.h / 2, d.w, d.h);
+
+        // Jarak ke garis henti
+        let distText = '';
+        if (stopLineX !== null) {
+            const distPx = d.x - stopLineX;
+            if (distPx > 0) {
+                const distM = distPx / pxPerMeter;
+                distText = ` | ${distM.toFixed(1)}m`;
+            }
+        }
+
+        // Tag label pill di atas box
+        const tagText = `${icon} ${label} ${scorePct}%${distText}`;
+        octx.font = 'bold 10px var(--font-mono)';
+        const textW = octx.measureText(tagText).width;
+        const tagX = Math.max(2, d.x - d.w / 2);
+        const tagY = Math.max(16, d.y - d.h / 2 - 5);
+
+        octx.fillStyle = 'rgba(11, 15, 25, 0.9)';
+        octx.strokeStyle = color;
+        octx.lineWidth = 1;
+        octx.beginPath();
+        if (octx.roundRect) {
+            octx.roundRect(tagX - 2, tagY - 12, textW + 8, 15, 4);
+        } else {
+            octx.rect(tagX - 2, tagY - 12, textW + 8, 15);
+        }
+        octx.fill();
+        octx.stroke();
+
+        octx.fillStyle = color;
+        octx.fillText(tagText, tagX + 2, tagY);
+        octx.restore();
+    });
+
+    // 6. Header HUD Banner pada Canvas
+    drawVideoHud(detections);
+}
+
+// Banner HUD Telemetri AI di Layar Video
+function drawVideoHud(detections) {
+    let cars = 0, motors = 0, trucks = 0;
+    detections.forEach(d => {
+        if (d.category === 'motorcycle') motors++;
+        else if (d.category === 'truck') trucks++;
+        else cars++;
+    });
+
+    const calM = Math.max(5, Number(el('in-cal').value) || 20);
+    const densityVal = (detections.length * 100) / calM;
+    const headwayM = detections.length > 0 ? (calM / detections.length).toFixed(1) : 'Bebas';
+
+    octx.save();
+    octx.fillStyle = 'rgba(11, 15, 25, 0.85)';
+    octx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    octx.lineWidth = 1;
+    octx.beginPath();
+    const hudW = Math.min(overlay.width - 20, 620);
+    if (octx.roundRect) {
+        octx.roundRect(10, 8, hudW, 26, 6);
+    } else {
+        octx.rect(10, 8, hudW, 26);
+    }
+    octx.fill();
+    octx.stroke();
+
+    octx.font = 'bold 10px var(--font-mono)';
+    octx.fillStyle = '#34d399';
+    octx.fillText(`AI: ${detections.length} kend`, 18, 25);
+
+    octx.fillStyle = '#38bdf8';
+    octx.fillText(`🚗 Mobil: ${cars}`, 115, 25);
+
+    octx.fillStyle = '#fb923c';
+    octx.fillText(`🏍️ Motor: ${motors}`, 200, 25);
+
+    octx.fillStyle = '#c084fc';
+    octx.fillText(`🚚 Truk: ${trucks}`, 285, 25);
+
+    octx.fillStyle = '#facc15';
+    octx.fillText(`Kepadatan: ${densityVal.toFixed(1)}/100m`, 365, 25);
+
+    octx.fillStyle = '#94a3b8';
+    octx.fillText(`Headway: ${headwayM}${headwayM === 'Bebas' ? '' : 'm'}`, 515, 25);
+    octx.restore();
+}
+
+// Deteksi berbasis TensorFlow COCO-SSD
+async function runCOCOSSD(now) {
+    if (modelBusy) return;
+    if (now - lastModelRun < MODEL_INTERVAL_MS) return;
+    modelBusy = true;
+    lastModelRun = now;
+
+    try {
+        const predictions = await vehicleModel.detect(video);
+        const vehicleDets = [];
+        const personDets = [];
+
+        predictions.forEach(p => {
+            const [x, y, w, h] = p.bbox;
+            const cfg = VEHICLE_CONFIG[p.class];
+            if (cfg && p.score >= cfg.minScore) {
+                vehicleDets.push({
+                    x: x + w / 2,
+                    y: y + h / 2,
+                    w,
+                    h,
+                    class: p.class,
+                    category: cfg.category,
+                    label: cfg.label,
+                    icon: cfg.icon,
+                    color: cfg.color,
+                    score: p.score
+                });
+            } else if (p.class === 'person' && p.score >= 0.30) {
+                personDets.push({
+                    x: x + w / 2,
+                    y: y + h / 2,
+                    w,
+                    h,
+                    class: 'person',
+                    category: 'person',
+                    label: 'Pejalan',
+                    icon: '🚶',
+                    color: '#10b981',
+                    score: p.score
+                });
+            }
+        });
+
+        activeDetections = vehicleDets;
+        activePersonDetections = personDets;
+
+        // Hitung orang di refuge zone
+        if (refugeZone) {
+            refugeCount = personDets.filter(p =>
+                p.x >= refugeZone.x && p.x <= refugeZone.x + refugeZone.w &&
+                p.y >= refugeZone.y && p.y <= refugeZone.y + refugeZone.h
+            ).length;
+            if (el('metric-refuge')) el('metric-refuge').innerText = `${refugeCount} Orang`;
+        }
+
+        // Tracking kendaraan
+        updateVehicleTracking(vehicleDets, now);
+    } catch (e) {
+        console.error('COCO-SSD error:', e);
+    } finally {
+        modelBusy = false;
+    }
+}
+
+// Deteksi fallback berbasis Motion / Frame Differencing dengan Pengelompokan & Klasifikasi
+function runMotionDetection(now) {
+    pctx.drawImage(video, 0, 0, PROC_W, PROC_H);
+    const frame = pctx.getImageData(0, 0, PROC_W, PROC_H);
+    const data = frame.data;
+    const gray = new Uint8Array(PROC_W * PROC_H);
+
+    for (let i = 0; i < data.length; i += 4) {
+        gray[i / 4] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
+    }
+
+    if (!prevGray) {
+        prevGray = gray;
+        return;
+    }
+
+    const thresh = Number(el('in-thresh').value);
+    const roadTopY = Math.round(PROC_H * (Number(el('in-roadtop').value) / 100));
+    const activeCells = [];
+
+    const cell = 10;
+    const scaleX = overlay.width / PROC_W;
+    const scaleY = overlay.height / PROC_H;
+
+    for (let y = roadTopY; y < PROC_H - cell; y += cell) {
+        for (let x = 0; x < PROC_W - cell; x += cell) {
+            let diffCount = 0;
+            for (let dy = 0; dy < cell; dy += 2) {
+                for (let dx = 0; dx < cell; dx += 2) {
+                    const idx = (y + dy) * PROC_W + (x + dx);
+                    if (Math.abs(gray[idx] - prevGray[idx]) > thresh) diffCount++;
+                }
+            }
+            if (diffCount >= 6) {
+                activeCells.push({
+                    x: x * scaleX,
+                    y: y * scaleY,
+                    w: cell * scaleX,
+                    h: cell * scaleY
+                });
+            }
+        }
+    }
+    prevGray = gray;
+
+    // Clustering motion cells
+    const clusters = [];
+    const maxMergeDist = 26;
+
+    activeCells.forEach(cell => {
+        let merged = false;
+        for (const c of clusters) {
+            if (cell.x >= c.minX - maxMergeDist && cell.x <= c.maxX + maxMergeDist &&
+                cell.y >= c.minY - maxMergeDist && cell.y <= c.maxY + maxMergeDist) {
+                c.minX = Math.min(c.minX, cell.x);
+                c.maxX = Math.max(c.maxX, cell.x + cell.w);
+                c.minY = Math.min(c.minY, cell.y);
+                c.maxY = Math.max(c.maxY, cell.y + cell.h);
+                c.count++;
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) {
+            clusters.push({
+                minX: cell.x,
+                maxX: cell.x + cell.w,
+                minY: cell.y,
+                maxY: cell.y + cell.h,
+                count: 1
+            });
+        }
+    });
+
+    const motionDets = [];
+    clusters.forEach(c => {
+        const w = c.maxX - c.minX;
+        const h = c.maxY - c.minY;
+        const area = w * h;
+        if (area < 600) return; // filter noise mikro
+
+        let category = 'car';
+        let cls = 'car';
+        let label = 'Mobil';
+        let icon = '🚗';
+        let color = '#38bdf8';
+
+        if (area < 2600 || w < 42) {
+            category = 'motorcycle';
+            cls = 'motorcycle';
+            label = 'Motor';
+            icon = '🏍️';
+            color = '#fb923c';
+        } else if (area >= 8500 || h >= 80 || (w > 120 && h > 60)) {
+            category = 'truck';
+            cls = 'truck';
+            label = 'Truk/Bus';
+            icon = '🚚';
+            color = '#c084fc';
+        }
+
+        motionDets.push({
+            x: c.minX + w / 2,
+            y: c.minY + h / 2,
+            w,
+            h,
+            class: cls,
+            category,
+            label,
+            icon,
+            color,
+            score: Math.min(0.94, 0.65 + (c.count * 0.02))
+        });
+    });
+
+    activeDetections = motionDets;
+    updateVehicleTracking(motionDets, now);
+}
+
+// Algoritma Pelacakan Kendaraan, Kepadatan, Kerapatan, dan Kecepatan
+function updateVehicleTracking(detections, now) {
+    const calM = Math.max(5, Number(el('in-cal').value) || 20);
+    const pxPerMeter = overlay.width / calM;
+
+    let carCount = 0;
+    let motorCount = 0;
+    let truckCount = 0;
+    const totalCount = detections.length;
+
+    detections.forEach(d => {
+        if (d.category === 'motorcycle') motorCount++;
+        else if (d.category === 'truck') truckCount++;
+        else carCount++;
+    });
+
+    // 1. Kepadatan Lalu Lintas (Traffic Density, k)
+    const densityPer100m = (totalCount * 100) / calM;
+    const densityPerKm = densityPer100m * 10;
+
+    let densityLevel = 'Lancar / Renggang (LOS A-B)';
+    let densityBadgeClass = 'telemetry-pill-tag telemetry-pill-green';
+    if (densityPer100m >= 35) {
+        densityLevel = 'Macet Kritis (LOS F)';
+        densityBadgeClass = 'telemetry-pill-tag telemetry-pill-red';
+    } else if (densityPer100m >= 20) {
+        densityLevel = 'Arus Padat (LOS E)';
+        densityBadgeClass = 'telemetry-pill-tag telemetry-pill-orange';
+    } else if (densityPer100m >= 8) {
+        densityLevel = 'Arus Sedang (LOS C-D)';
+        densityBadgeClass = 'telemetry-pill-tag telemetry-pill-yellow';
+    }
+
+    // 2. Kerapatan Fisik Kendaraan (Space Headway)
+    const spaceHeadwayM = totalCount > 0 ? (calM / totalCount) : Infinity;
+    let spaceStatus = 'Jarak Bebas / Kosong';
+    let spaceBadgeClass = 'telemetry-pill-tag telemetry-pill-green';
+    if (totalCount > 0) {
+        if (spaceHeadwayM < 5) {
+            spaceStatus = 'Sangat Rapat (Antrean)';
+            spaceBadgeClass = 'telemetry-pill-tag telemetry-pill-red';
+        } else if (spaceHeadwayM < 9) {
+            spaceStatus = 'Rapat';
+            spaceBadgeClass = 'telemetry-pill-tag telemetry-pill-orange';
+        } else if (spaceHeadwayM < 16) {
+            spaceStatus = 'Sedang / Normal';
+            spaceBadgeClass = 'telemetry-pill-tag telemetry-pill-cyan';
+        } else {
+            spaceStatus = 'Longgar / Cukup';
+            spaceBadgeClass = 'telemetry-pill-tag telemetry-pill-green';
+        }
+    }
+
+    // 3. Jarak ke stop line & estimasi kecepatan
+    const liveVehicles = [];
+    detections.forEach(d => {
+        if (stopLineX !== null) {
+            const distPx = d.x - stopLineX;
+            if (distPx > 0) {
+                const distM = distPx / pxPerMeter;
+                const speedMps = d.category === 'motorcycle' ? 10.5 : d.category === 'truck' ? 7.2 : 9.2;
+                liveVehicles.push({
+                    distance_m: distM,
+                    speed_mps: speedMps,
+                    approaching: true,
+                    class: d.class,
+                    category: d.category
+                });
+            }
+        }
+    });
+
+    currentVehicles = liveVehicles;
+
+    const avgSpeedMps = liveVehicles.length > 0
+        ? liveVehicles.reduce((s, v) => s + v.speed_mps, 0) / liveVehicles.length
+        : (totalCount > 0 ? 8.5 : 0);
+    const avgSpeedKmh = avgSpeedMps * 3.6;
+
+    // 4. Waktu Antara (Time Headway)
+    const timeHeadwayS = (totalCount > 0 && isFinite(spaceHeadwayM) && avgSpeedMps > 0)
+        ? (spaceHeadwayM / avgSpeedMps)
+        : null;
+
+    // 5. Rasio Okupansi Permukaan Jalan (%)
+    const roadTopY = Math.round(overlay.height * (Number(el('in-roadtop').value) / 100));
+    const roadAreaPx = overlay.width * Math.max(1, overlay.height - roadTopY);
+    const totalBboxAreaPx = detections.reduce((sum, d) => sum + (d.w * d.h), 0);
+    const roadOccupancyPct = Math.min(100, (totalBboxAreaPx / roadAreaPx) * 100);
+
+    // 6. Update Seluruh Telemetri UI
+    if (el('tele-total-vehicles')) el('tele-total-vehicles').innerText = `${totalCount} unit`;
+    if (el('tele-count-cars')) el('tele-count-cars').innerText = `${carCount} unit`;
+    if (el('tele-count-motorcycles')) el('tele-count-motorcycles').innerText = `${motorCount} unit`;
+    if (el('tele-count-trucks')) el('tele-count-trucks').innerText = `${truckCount} unit`;
+
+    if (el('tele-density-val')) el('tele-density-val').innerText = `${densityPer100m.toFixed(1)} kend/100m`;
+    if (el('tele-density-badge')) {
+        el('tele-density-badge').innerText = densityLevel;
+        el('tele-density-badge').className = densityBadgeClass;
+    }
+
+    if (el('tele-space-headway')) el('tele-space-headway').innerText = isFinite(spaceHeadwayM) ? `${spaceHeadwayM.toFixed(1)} m / kend` : 'Bebas';
+    if (el('tele-space-status')) {
+        el('tele-space-status').innerText = spaceStatus;
+        el('tele-space-status').className = spaceBadgeClass;
+    }
+
+    if (el('tele-time-headway')) el('tele-time-headway').innerText = timeHeadwayS !== null ? `${timeHeadwayS.toFixed(1)} s` : '-';
+    if (el('tele-road-occupancy')) el('tele-road-occupancy').innerText = `${roadOccupancyPct.toFixed(1)}%`;
+
+    if (el('tele-tracked-blobs')) el('tele-tracked-blobs').innerText = totalCount;
+    if (el('tele-approaching')) el('tele-approaching').innerText = `${liveVehicles.length} unit`;
+    if (el('tele-avg-speed')) el('tele-avg-speed').innerText = `${avgSpeedKmh.toFixed(1)} km/h`;
+
+    if (liveVehicles.length > 0) {
+        const avgDist = liveVehicles.reduce((s, v) => s + v.distance_m, 0) / liveVehicles.length;
+        if (el('tele-avg-distance')) el('tele-avg-distance').innerText = `${avgDist.toFixed(1)} m`;
+        if (el('tele-avg-eta')) el('tele-avg-eta').innerText = avgSpeedMps > 0 ? `${(avgDist / avgSpeedMps).toFixed(1)} s` : '-';
+    } else {
+        if (el('tele-avg-distance')) el('tele-avg-distance').innerText = '-';
+        if (el('tele-avg-eta')) el('tele-avg-eta').innerText = '-';
+    }
+
+    if (el('metric-headway')) {
+        el('metric-headway').innerText = isFinite(spaceHeadwayM) ? `${spaceHeadwayM.toFixed(1)} m` : 'Bebas';
+    }
+
+    // Hitung keputusan AI Gap
+    evaluateAIGapDecision();
+}
+
+// Evaluasi Keputusan Menggunakan ai-engine.js
+function evaluateAIGapDecision() {
+    const calM = Number(el('in-cal').value);
+    const decision = AIEngine.computeDecision(currentVehicles, {
+        crossingWidth_m: 6.5,
+        pedSpeed_mps: 1.2,
+        marginSeconds: 2.0,
+        observationLength_m: calM
+    });
+
+    // Update Metrik Banner
+    if (el('metric-critical-gap')) el('metric-critical-gap').innerText = `${decision.criticalGap.toFixed(1)} s`;
+    if (el('metric-nearest-gap')) el('metric-nearest-gap').innerText = isFinite(decision.nearestGap) ? `${decision.nearestGap.toFixed(1)} s` : 'Kosong';
+    if (el('metric-density')) el('metric-density').innerText = decision.trafficDensity ? `${decision.trafficDensity.level} (${decision.trafficDensity.vehiclesPer100m.toFixed(0)}/100m)` : '-';
+
+    const confPct = Math.round(decision.confidence * 100);
+    const confColor = decision.safe ? '#10b981' : '#ef4444';
+    if (el('confidence-percentage')) {
+        el('confidence-percentage').innerText = `${confPct}%`;
+        el('confidence-percentage').style.color = confColor;
+    }
+    if (el('confidence-bar-fill')) {
+        el('confidence-bar-fill').style.width = `${confPct}%`;
+        el('confidence-bar-fill').style.background = confColor;
+    }
+
+    // Reasoning box
+    if (decision.reasoning && decision.reasoning.length) {
+        el('ai-reasoning-log').innerText = decision.reasoning[decision.reasoning.length - 1];
+    }
+
+    // Sinkronkan ke simulasi panorama
+    window.PanoramaSim?.setVideoTraffic({
+        arterialCameraActive: !video.paused && video.videoWidth > 0,
+        arterialDensityPer100m: decision.trafficDensity?.vehiclesPer100m || 0,
+        arterialAverageSpeed_kmh: 35
+    });
+
+    // Jika sedang dalam proses pengecekan permintaan menyeberang
+    if (aiState === "CHECKING") {
+        checkElapsed++;
+        if (decision.safe && decision.confidence >= 0.65) {
+            // Celah aman ditemukan!
+            aiState = "PED_CROSSING";
+            clearInterval(checkTimer);
+            updateDecisionDisplay("PELUANG AMAN DITEMUKAN &mdash; MEMULAI FASE PENYEBERANGAN", "safe", decision.confidence);
+            window.PanoramaSim?.requestPedestrianCrossing(true, true);
+            el('btn-ped-text').innerText = "Fase Pejalan Kaki Aktif...";
+        } else if (checkElapsed >= 14) {
+            // Courtesy timeout: jangan biarkan pejalan menunggu lebih dari 14 detik
+            aiState = "PED_CROSSING";
+            clearInterval(checkTimer);
+            updateDecisionDisplay("BATAS WAKTU TUNGGU TERCAPAI &mdash; MEMULAI SIKLUS SINYAL", "safe", 0.75);
+            window.PanoramaSim?.requestPedestrianCrossing(true, true);
+            el('btn-ped-text').innerText = "Fase Pejalan Kaki Aktif...";
+        } else {
+            updateDecisionDisplay(`MENCARI CELAH AMAN (${checkElapsed}s)... KEYAKINAN ${confPct}%`, "hold", decision.confidence);
+        }
+    } else if (aiState === "IDLE") {
+        if (decision.safe) {
+            updateDecisionDisplay("CELAH ARUS AMAN (SIAP MENYEBERANG)", "safe", decision.confidence);
+        } else {
+            updateDecisionDisplay("ARUS KENDARAAN RAPAT (TAHAN PENYEBERANG)", "hold", decision.confidence);
+        }
+    }
+}
+
+function updateDecisionDisplay(text, type, conf) {
+    const badge = el('ai-decision-badge');
+    const icon = el('ai-status-icon');
+    const txt = el('ai-status-text');
+
+    badge.className = `ai-status-badge status-${type}`;
+    icon.innerText = type === 'safe' ? '✅' : type === 'hold' ? '⛔' : '⏳';
+    txt.innerHTML = text;
+}
+
+// Trigger saat tombol minta menyeberang ditekan
+function triggerPedestrianCross() {
+    if (aiState !== "IDLE") return;
+    aiState = "CHECKING";
+    checkElapsed = 0;
+    el('btn-pedestrian-call').disabled = true;
+
+    // Jika video CCTV tidak aktif / dipause, langsung setujui permintaan menyeberang ke Fase 3
+    if (!video || video.paused || video.readyState < 2) {
+        aiState = "PED_CROSSING";
+        updateDecisionDisplay("PERMINTAAN DITERIMA &mdash; FASE 3 INTERUPSI DIAKTIFKAN", "safe", 0.95);
+        window.PanoramaSim?.requestPedestrianCrossing(true, true);
+        el('btn-ped-text').innerText = "Fase Pejalan Kaki Aktif...";
+        return;
+    }
+
+    el('btn-ped-text').innerText = "Mengecek Celah Arus Video...";
+    updateDecisionDisplay("MENGANALISIS CELAH LALU LINTAS & KECEPATAN...", "hold", 0.5);
+
+    if (checkTimer) clearInterval(checkTimer);
+    checkTimer = setInterval(() => {
+        evaluateAIGapDecision();
+    }, 1000);
+}
+
+function onPedestrianCrossingComplete() {
+    aiState = "IDLE";
+    el('btn-pedestrian-call').disabled = false;
+    el('btn-ped-text').innerText = "Minta Menyeberang (Push Button)";
+    updateDecisionDisplay("SIKLUS PENYEBERANGAN SELESAI &mdash; SISTEM SIAGA", "idle", 0.85);
+}
+
+// Slider listeners
+['in-cal', 'in-thresh', 'in-roadtop'].forEach(id => {
+    el(id).addEventListener('input', () => {
+        el('lbl-cal').innerText = el('in-cal').value + ' m';
+        el('lbl-thresh').innerText = el('in-thresh').value;
+        el('lbl-roadtop').innerText = el('in-roadtop').value + '%';
+    });
+});
+
+// Theme switcher
+const themeToggle = el('theme-toggle');
+themeToggle.onclick = () => {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', isLight ? 'dark' : 'light');
+};
+</script>
+</body>
+</html>
